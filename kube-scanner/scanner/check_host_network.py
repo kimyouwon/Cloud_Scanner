@@ -13,13 +13,13 @@ def check_host_network():
     print("STDERR:", result.stderr)
 
     if result.returncode != 0:
-        print("❌ kubectl 명령 실패. 클러스터가 켜져 있는지 확인하세요.")
+        print("kubectl 명령 실패. 클러스터가 켜져 있는지 확인하세요.")
         return []
 
     try:
         pods = json.loads(result.stdout)
     except json.JSONDecodeError:
-        print("❌ JSON 파싱 실패. 출력 내용 확인 필요.")
+        print("JSON 파싱 실패. 출력 내용 확인 필요.")
         return []
 
     findings = []

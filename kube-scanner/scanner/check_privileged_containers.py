@@ -9,14 +9,14 @@ def check_privileged_containers():
     )
 
     if result.returncode != 0 or not result.stdout:
-        print("❌ kubectl 명령 실패 (privileged 검사)")
+        print("kubectl 명령 실패 (privileged 검사)")
         print("stderr:", result.stderr)
         return []
 
     try:
         pods = json.loads(result.stdout)
     except json.JSONDecodeError:
-        print("❌ JSON 파싱 실패 (privileged 검사)")
+        print("JSON 파싱 실패 (privileged 검사)")
         return []
 
     findings = []
