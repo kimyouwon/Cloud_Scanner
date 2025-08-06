@@ -4,7 +4,7 @@ from scanner.check_privileged_containers import check_privileged_containers
 def print_findings(title, findings):
     print(f"\n{title}")
     if not findings:
-        print("이상 없음!")
+        print("이상 없음")
     else:
         for item in findings:
             line = f"- [{item['namespace']}] {item['pod']}"
