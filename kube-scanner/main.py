@@ -1,31 +1,30 @@
-from scanner.check_host_network import check_host_network
-from scanner.check_privileged_containers import check_privileged_containers
- 
-def print_findings(title, findings):
-    print(f"\n{title}")
-    if not findings:
-        print("이상 없음")
-    else:
-        for item in findings:
-            line = f"- [{item['namespace']}] {item['pod']}"
-            if 'container' in item:
-                line += f" (컨테이너: {item['container']})"
-            line += f" → {item['reason']}"
-            print(line)
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from runner import run_all_checks
+import uvicorn
 
-def main():
-    print("쿠버네티스 보안 설정 점검 시작...\n")
+app = FastAPI(title="Cloud Scanner API")
 
-    # 점검 1: hostNetwork 사용 여부
-    host_network_findings = check_host_network()
-    print_findings("hostNetwork 설정 점검", host_network_findings)
+# CORS (프론트엔드와 테스트할 때만 허용. 배포 시 더 엄격히 설정)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # 프론트 URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    # 점검 2: privileged 컨테이너 여부
-    privileged_findings = check_privileged_containers()
-    print_findings("Privileged 컨테이너 점검", privileged_findings)
-
-    print("\n모든 점검 완료.")
+@app.post("/scan")
+def scan():
+    """
+    전체 체크를 실행하고 JSON 결과를 바로 반환합니다.
+    (실제 환경에서는 비동기 job 큐 + 웹훅/폴링/웹소켓 방식 권장)
+    """
+    try:
+        payload = run_all_checks()
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    main()
-
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
