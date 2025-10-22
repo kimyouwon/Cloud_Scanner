@@ -28,7 +28,8 @@ class HostNetworkCheck(Check):
                             "nodeName": spec.node_name,
                             "pod_uid": p.metadata.uid
                         },
-                        "Remediation": "가능한 경우 hostNetwork:false로 변경하거나 별도 네트워크 네임스페이스 사용."
+                        "Remediation": "가능한 경우 hostNetwork:false로 변경하거나 별도 네트워크 네임스페이스 사용.",
+                        "Severity": self.severity
                     })
         except Exception as e:
             return [{
@@ -36,7 +37,8 @@ class HostNetworkCheck(Check):
                 "Result": "ERROR",
                 "Reason": "예외 발생",
                 "Evidence": {"error": str(e), "trace": traceback.format_exc()},
-                "Remediation": ""
+                "Remediation": "",
+                "Severity": self.severity
             }]
         # PASS 처리: findings가 비어있으면 PASS를 한 결과로 반환
         if not findings:
@@ -48,6 +50,7 @@ class HostNetworkCheck(Check):
                 "Namespace": "N/A",
                 "Reason": "No pods with hostNetwork=true found",
                 "Evidence": {},
-                "Remediation": ""
+                "Remediation": "",
+                "Severity": self.severity
             }]
         return findings

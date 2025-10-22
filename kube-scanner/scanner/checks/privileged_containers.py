@@ -25,7 +25,8 @@ class PrivilegedCheck(Check):
                             "Namespace": p.metadata.namespace,
                             "Reason": "container.securityContext.privileged == true",
                             "Evidence": {"pod": p.metadata.name},
-                            "Remediation": "privileged:false 설정 또는 보다 세분화된 권한으로 대체"
+                            "Remediation": "privileged:false 설정 또는 보다 세분화된 권한으로 대체",
+                            "Severity": self.severity
                         })
         except Exception as e:
             return [{
@@ -33,7 +34,8 @@ class PrivilegedCheck(Check):
                 "Result": "ERROR",
                 "Reason": "예외 발생",
                 "Evidence": {"error": str(e), "trace": traceback.format_exc()},
-                "Remediation": ""
+                "Remediation": "",
+                "Severity": self.severity
             }]
         if not findings:
             return [{
@@ -44,6 +46,7 @@ class PrivilegedCheck(Check):
                 "Namespace": "N/A",
                 "Reason": "No privileged containers found",
                 "Evidence": {},
-                "Remediation": ""
+                "Remediation": "",
+                "Severity": self.severity
             }]
         return findings

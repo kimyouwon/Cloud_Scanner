@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  k8s-scanner-gui:
+    build: .
+    container_name: k8s-scanner-gui
+    volumes:
+      - ~/.kube:/root/.kube:ro  # kubeconfig 읽기 전용 마운트
+      - ./results:/app/results  # 결과 저장용 볼륨
+    environment:
+      - DISPLAY=${DISPLAY:-:0}  # X11 디스플레이
+    network_mode: host
+    command: python3 gui.py
+    profiles:
+      - gui
+
+  k8s-scanner-api:
+    build: .
+    container_name: k8s-scanner-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ~/.kube:/root/.kube:ro
+      - ./results:/app/results
+    command: python3 main.py
+    profiles:
+      - api
+
+  k8s-scanner-cli:
+    build: .
+    container_name: k8s-scanner-cli
+    volumes:
+      - ~/.kube:/root/.kube:ro
+      - ./results:/app/results
+    command: python3 runner.py
+    profiles:
+      - cli
+
+# 사용법:
+# GUI 모드: docker-compose --profile gui up
+# API 모드: docker-compose --profile api up
+# CLI 모드: docker-compose --profile cli run k8s-scanner-cli
