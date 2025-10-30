@@ -1,7 +1,7 @@
 # Kubernetes Security Scanner Requirements
 
-# GUI Framework (Linux 호환 버전)
-PySimpleGUI>=5.0.10
+# GUI Framework
+PySimpleGUI==5.0.8.3
 
 # Kubernetes Client
 kubernetes>=28.1.0
@@ -15,6 +15,3 @@ httpx>=0.25.2
 
 # Additional utilities
 python-dateutil>=2.8.2
-
-# Linux GUI 지원
-tkinter  # Python 기본 포함, 별도 설치 불필요

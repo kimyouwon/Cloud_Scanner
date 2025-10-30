@@ -167,7 +167,13 @@ def update_severity_counts(findings, window):
     window['-LOW-'].update(str(counts["Low"]))
 
 def main():
-    sg.theme('DarkBlue3')
+    # PySimpleGUI 버전에 따라 테마 설정
+    try:
+        sg.theme('DarkBlue3')
+    except AttributeError:
+        # 구버전에서는 테마 설정이 없을 수 있음
+        pass
+    
     window = sg.Window("🔒 Kubernetes Security Scanner", build_layout(), finalize=True, resizable=True)
 
     scan_thread = None

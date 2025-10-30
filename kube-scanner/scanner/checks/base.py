@@ -35,3 +35,4 @@ class Check(ABC):
             "severity": self.severity,
             "description": self.description
         }
+

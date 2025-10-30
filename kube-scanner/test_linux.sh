@@ -117,3 +117,7 @@ echo "  ./run_linux.sh cli  - CLI 모드"
 echo "  ./run_linux.sh api  - API 모드"
 echo ""
 echo "테스트 완료!"
+
+
+
+
