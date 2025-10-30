@@ -34,9 +34,9 @@ fi
 # Python 의존성 설치
 echo "📦 Python 패키지 설치 중..."
 
-# PySimpleGUI 먼저 설치 (Linux 호환 버전)
+# PySimpleGUI 먼저 설치 (private PyPI 서버 사용)
 echo "PySimpleGUI 설치 중..."
-python3 -m pip install PySimpleGUI==5.0.8.3
+python3 -m pip install --extra-index-url https://PySimpleGUI.net/install PySimpleGUI
 
 # 나머지 패키지 설치
 python3 -m pip install -r requirements.txt

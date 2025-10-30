@@ -1,7 +1,9 @@
 # Kubernetes Security Scanner Requirements
 
 # GUI Framework
-PySimpleGUI==5.0.8.3
+# PySimpleGUI는 private PyPI로 이동했습니다. 리눅스에서 설치 시:
+# python -m pip install --extra-index-url https://PySimpleGUI.net/install PySimpleGUI
+PySimpleGUI
 
 # Kubernetes Client
 kubernetes>=28.1.0

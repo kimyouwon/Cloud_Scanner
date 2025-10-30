@@ -37,10 +37,11 @@ check_dependencies() {
     fi
     
     # PySimpleGUI 확인
-    python3 -c "import PySimpleGUI" 2>/dev/null
+    python3 -c "import PySimpleGUI as sg; hasattr(sg, 'Window')" 2>/dev/null
     if [ $? -ne 0 ]; then
-        echo -e "${YELLOW}⚠️  PySimpleGUI가 설치되지 않았습니다. 설치 중...${NC}"
-        python3 -m pip install PySimpleGUI
+        echo -e "${YELLOW}⚠️  PySimpleGUI가 설치되지 않았거나 버전이 올바르지 않습니다. 설치 중...${NC}"
+        python3 -m pip uninstall PySimpleGUI -y 2>/dev/null
+        python3 -m pip install --extra-index-url https://PySimpleGUI.net/install PySimpleGUI
     fi
     
     # kubernetes 확인
