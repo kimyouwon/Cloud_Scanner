@@ -38,12 +38,32 @@ def make_k8s_client():
         raise
     return client
 
-def run_all_checks(concurrency: int = 6):
-    k8s_client = make_k8s_client()
+def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
     checks = load_checks()
     results = []
+    
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
-        futures = {ex.submit(c.run, k8s_client): c for c in checks}
+        futures = {}
+        for c in checks:
+            # 체크 타입에 따라 다른 파라미터 전달
+            try:
+                import inspect
+                sig = inspect.signature(c.run)
+                params = sig.parameters
+                
+                # k8s_client가 필요하면 클라이언트 생성
+                if 'k8s_client' in params:
+                    k8s_client = make_k8s_client()
+                    futures[ex.submit(c.run, k8s_client)] = c
+                elif 'kubeconfig' in params:
+                    futures[ex.submit(c.run, kubeconfig)] = c
+                else:
+                    # 파라미터 없으면 그냥 실행
+                    futures[ex.submit(c.run)] = c
+            except Exception as e:
+                # 체크 로드 실패는 무시하고 계속
+                continue
+        
         for fut in as_completed(futures):
             c = futures[fut]
             try:
@@ -59,6 +79,7 @@ def run_all_checks(concurrency: int = 6):
                 results.extend(res)
             else:
                 results.append(res)
+    
     payload = {
         "ScanID": f"scan-{os.urandom(4).hex()}",
         "Timestamp": __import__("datetime").datetime.now().__str__(),
@@ -71,19 +92,67 @@ if __name__ == "__main__":
     parser.add_argument("--kubeconfig", type=str, help="Path to kubeconfig file")
     parser.add_argument("--output", type=str, help="Output file path (JSON)")
     parser.add_argument("--format", choices=["json", "table"], default="json", help="Output format")
+    parser.add_argument("--context", type=str, help="Kubernetes context name (default: current context)")
     
     args = parser.parse_args()
     
-    # kubeconfig 설정
+    # kubeconfig 경로 설정
+    kubeconfig_path = ''
     if args.kubeconfig:
+        kubeconfig_path = args.kubeconfig
         os.environ["KUBECONFIG"] = args.kubeconfig
     
     try:
         print("🔍 Kubernetes Security Scanner 시작...", file=sys.stderr)
         print("=" * 50, file=sys.stderr)
         
+        # Minikube 클러스터 상태 확인
+        import subprocess
+        
+        # 1) kubectl 설치 확인
+        try:
+            subprocess.run(['kubectl', 'version', '--client'], 
+                         capture_output=True, text=True, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("❌ kubectl이 설치되지 않았거나 실행할 수 없습니다", file=sys.stderr)
+            print("💡 kubectl 설치 방법: https://kubernetes.io/docs/tasks/tools/", file=sys.stderr)
+            sys.exit(1)
+        
+        # 2) Kubernetes 클러스터 연결 확인
+        try:
+            result = subprocess.run(['kubectl', 'cluster-info'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode != 0:
+                print("❌ Kubernetes 클러스터에 연결할 수 없습니다", file=sys.stderr)
+                print(f"   오류: {result.stderr.strip()}", file=sys.stderr)
+                print("💡 Minikube 시작: minikube start", file=sys.stderr)
+                sys.exit(1)
+            print("✅ Kubernetes 클러스터 연결 성공", file=sys.stderr)
+        except subprocess.TimeoutExpired:
+            print("❌ Kubernetes 클러스터 응답 시간 초과", file=sys.stderr)
+            print("💡 클러스터가 실행 중인지 확인하세요: minikube status", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ 클러스터 연결 확인 중 오류: {e}", file=sys.stderr)
+            sys.exit(1)
+        
+        # 3) Minikube 컨텍스트 자동 감지
+        if not kubeconfig_path and not args.context:
+            try:
+                result = subprocess.run(['kubectl', 'config', 'current-context'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    context = result.stdout.strip()
+                    print(f"📌 현재 Kubernetes 컨텍스트: {context}", file=sys.stderr)
+                    if 'minikube' in context.lower():
+                        print("✅ Minikube 환경 감지됨", file=sys.stderr)
+            except Exception:
+                pass
+        
+        print("=" * 50, file=sys.stderr)
+        
         # 스캔 실행
-        results = run_all_checks(concurrency=6)
+        results = run_all_checks(concurrency=6, kubeconfig=kubeconfig_path)
         
         # 결과 출력
         if args.format == "json":
