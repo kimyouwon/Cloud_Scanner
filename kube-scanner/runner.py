@@ -686,83 +686,11 @@ def save_html(results: Dict, output_path: str):
             with open(output_path, 'r', encoding='utf-8') as check_file:
                 first_line = check_file.readline()
                 if not first_line.strip().startswith('<!DOCTYPE'):
-                    # HTML이 제대로 생성되지 않았으면 다시 시도
-                    print(f"[WARN] HTML 파일 형식 확인 실패, 재생성 시도...", file=sys.stderr)
-                    # 간단한 HTML로 재생성
-                    simple_html = f"""<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kubernetes Security Scanner Results</title>
-</head>
-<body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#e0f2fe;">
-    <div style="max-width:1200px;margin:0 auto;background:white;padding:30px;border-radius:8px;">
-        <h1 style="font-size:1.5rem;margin-bottom:30px;">[보안 점검 리포트]</h1>
-        <div style="display:flex;justify-content:space-between;margin-bottom:30px;">
-            <div>
-                <div style="margin-bottom:12px;"><strong>점검 대상:</strong> {target_name}</div>
-                <div style="margin-bottom:12px;"><strong>점검 일시:</strong> {formatted_time}</div>
-                <div style="margin-bottom:12px;"><strong>총 항목수:</strong> {total}</div>
-                <div style="margin-bottom:12px;"><strong>FAIL 항목 수:</strong> <span style="color:#ef4444;">{failed}</span></div>
-            </div>
-            <div style="display:flex;align-items:center;gap:20px;">
-                <div style="background:{grade_color};color:white;padding:12px 24px;border-radius:8px;font-weight:600;">{grade}</div>
-                <div>
-                    <div style="font-size:2.5rem;font-weight:700;">{int(summary.get('score', 0))}점</div>
-                    <div style="font-size:0.875rem;color:#6b7280;">스캔 점수</div>
-                </div>
-            </div>
-        </div>
-        <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;">
-            <thead style="background:#f3f4f6;">
-                <tr>
-                    <th style="padding:12px;text-align:left;border-bottom:2px solid #e5e7eb;">항목</th>
-                    <th style="padding:12px;text-align:left;border-bottom:2px solid #e5e7eb;">대상</th>
-                    <th style="padding:12px;text-align:left;border-bottom:2px solid #e5e7eb;">결과</th>
-                    <th style="padding:12px;text-align:left;border-bottom:2px solid #e5e7eb;">점수</th>
-                </tr>
-            </thead>
-            <tbody>
-"""
-            for result in results.get("Results", []):
-                check_id = result.get("CheckID", "UNKNOWN")
-                status = result.get("Result", "UNKNOWN")
-                obj_name = result.get("ObjectName", "")
-                namespace = result.get("Namespace", "")
-                check_name = check_info.get(check_id, {}).get("name", check_id)
-                check_points = check_info.get(check_id, {}).get("points", 0)
-                target = f"{namespace}/{obj_name}" if namespace and namespace != "N/A" and obj_name else (obj_name if obj_name else "-")
-                score_display = f"-{int(check_points)}" if status == "FAIL" and check_points > 0 else "-"
-                result_color = "#ef4444" if status == "FAIL" else "#1f2937"
-                simple_html += f"""
-                <tr style="border-top:1px solid #e5e7eb;">
-                    <td style="padding:12px;">{check_name}</td>
-                    <td style="padding:12px;">{target}</td>
-                    <td style="padding:12px;color:{result_color};font-weight:600;">{status}</td>
-                    <td style="padding:12px;">{score_display}</td>
-                </tr>
-"""
-            simple_html += """
-            </tbody>
-        </table>
-"""
-            if failed > 0:
-                simple_html += f"""
-        <div style="margin-top:20px;padding:16px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
-            <div style="font-weight:600;color:#991b1b;margin-bottom:8px;">주의! FAIL 항목 {failed}건 발견</div>
-            <div style="color:#6b7280;font-size:0.875rem;">보안 권고:</div>
-        </div>
-"""
-            simple_html += """
-    </div>
-</body>
-</html>
-"""
-            with open(output_path, 'w', encoding='utf-8', newline='') as f:
-                f.write(simple_html)
+                    raise Exception(f"HTML 파일 형식이 올바르지 않습니다. 첫 줄: {first_line[:50]}")
     except Exception as e:
         print(f"[ERROR] HTML 파일 저장 실패: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         raise
 
 if __name__ == "__main__":
