@@ -390,13 +390,137 @@ def save_html(results: Dict, output_path: str):
     
     severity_labels = list(severity_data.keys()) if severity_data else ["N/A"]
     
+    # SVG 차트 생성 함수
+    import math
+    
+    def create_donut_chart(passed, failed, warn, error, total, size=200):
+        """도넛 차트 SVG 생성"""
+        if total == 0:
+            return '<div style="text-align:center;padding:40px;">데이터 없음</div>'
+        
+        center = size / 2
+        radius = size / 2 - 20
+        stroke_width = 30
+        
+        # 각도 계산
+        def get_angle(value):
+            return (value / total) * 360
+        
+        def get_coords(angle, r):
+            rad = math.radians(angle - 90)
+            x = center + r * math.cos(rad)
+            y = center + r * math.sin(rad)
+            return x, y
+        
+        colors = {
+            'pass': '#10b981',
+            'fail': '#ef4444',
+            'warn': '#f59e0b',
+            'error': '#6b7280'
+        }
+        
+        paths = []
+        current_angle = 0
+        
+        if passed > 0:
+            angle = get_angle(passed)
+            x1, y1 = get_coords(current_angle, radius)
+            x2, y2 = get_coords(current_angle + angle, radius)
+            large_arc = 1 if angle > 180 else 0
+            paths.append(f'<path d="M {x1} {y1} A {radius} {radius} 0 {large_arc} 1 {x2} {y2}" '
+                        f'stroke="{colors["pass"]}" stroke-width="{stroke_width}" fill="none" />')
+            current_angle += angle
+        
+        if failed > 0:
+            angle = get_angle(failed)
+            x1, y1 = get_coords(current_angle, radius)
+            x2, y2 = get_coords(current_angle + angle, radius)
+            large_arc = 1 if angle > 180 else 0
+            paths.append(f'<path d="M {x1} {y1} A {radius} {radius} 0 {large_arc} 1 {x2} {y2}" '
+                        f'stroke="{colors["fail"]}" stroke-width="{stroke_width}" fill="none" />')
+            current_angle += angle
+        
+        if warn > 0:
+            angle = get_angle(warn)
+            x1, y1 = get_coords(current_angle, radius)
+            x2, y2 = get_coords(current_angle + angle, radius)
+            large_arc = 1 if angle > 180 else 0
+            paths.append(f'<path d="M {x1} {y1} A {radius} {radius} 0 {large_arc} 1 {x2} {y2}" '
+                        f'stroke="{colors["warn"]}" stroke-width="{stroke_width}" fill="none" />')
+            current_angle += angle
+        
+        if error > 0:
+            angle = get_angle(error)
+            x1, y1 = get_coords(current_angle, radius)
+            x2, y2 = get_coords(current_angle + angle, radius)
+            large_arc = 1 if angle > 180 else 0
+            paths.append(f'<path d="M {x1} {y1} A {radius} {radius} 0 {large_arc} 1 {x2} {y2}" '
+                        f'stroke="{colors["error"]}" stroke-width="{stroke_width}" fill="none" />')
+        
+        return f'''
+        <svg width="{size}" height="{size}" style="display:block;margin:0 auto;">
+            {''.join(paths)}
+            <circle cx="{center}" cy="{center}" r="{radius - stroke_width/2}" fill="white" />
+            <text x="{center}" y="{center - 10}" text-anchor="middle" font-size="24" font-weight="bold" fill="#1f2937">{total}</text>
+            <text x="{center}" y="{center + 15}" text-anchor="middle" font-size="14" fill="#6b7280">전체</text>
+        </svg>
+        '''
+    
+    def create_bar_chart(severity_data, severity_labels, width=300, height=200):
+        """막대 그래프 SVG 생성"""
+        if not severity_data or not severity_labels:
+            return '<div style="text-align:center;padding:40px;">데이터 없음</div>'
+        
+        padding = 40
+        chart_width = width - padding * 2
+        chart_height = height - padding * 2
+        bar_width = chart_width / (len(severity_labels) * 4 + 1)
+        max_value = max(
+            max(severity_data.get(s, {}).get('pass', 0) for s in severity_labels),
+            max(severity_data.get(s, {}).get('fail', 0) for s in severity_labels),
+            max(severity_data.get(s, {}).get('warn', 0) for s in severity_labels),
+            max(severity_data.get(s, {}).get('error', 0) for s in severity_labels),
+            1
+        )
+        
+        bars = []
+        labels = []
+        colors = {'pass': '#10b981', 'fail': '#ef4444', 'warn': '#f59e0b', 'error': '#6b7280'}
+        
+        for i, label in enumerate(severity_labels):
+            x = padding + (i * 4 + 1) * bar_width
+            data = severity_data.get(label, {})
+            y_base = padding + chart_height
+            
+            # 각 상태별 막대
+            for j, (status, color) in enumerate([('pass', colors['pass']), ('fail', colors['fail']), 
+                                                  ('warn', colors['warn']), ('error', colors['error'])]):
+                value = data.get(status, 0)
+                if value > 0:
+                    bar_height = (value / max_value) * chart_height
+                    y = y_base - bar_height
+                    bars.append(f'<rect x="{x + j * bar_width}" y="{y}" width="{bar_width * 0.8}" '
+                              f'height="{bar_height}" fill="{color}" />')
+            
+            labels.append(f'<text x="{x + bar_width * 2}" y="{height - 10}" text-anchor="middle" '
+                         f'font-size="10" fill="#374151">{label[:8]}</text>')
+        
+        return f'''
+        <svg width="{width}" height="{height}" style="display:block;margin:0 auto;">
+            {''.join(bars)}
+            {''.join(labels)}
+        </svg>
+        '''
+    
+    donut_chart_svg = create_donut_chart(passed, failed, len(warn_results), error_count, total)
+    bar_chart_svg = create_bar_chart(severity_data, severity_labels)
+    
     html = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kubernetes Security Scanner Results</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {{
             margin: 0;
@@ -800,11 +924,41 @@ def save_html(results: Dict, output_path: str):
             <div class="charts-section">
                 <div class="chart-container">
                     <h3>결과 분포</h3>
-                    <canvas id="resultsChart"></canvas>
+                    {donut_chart_svg}
+                    <div style="display:flex;justify-content:center;gap:20px;margin-top:20px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:16px;height:16px;background:#10b981;border-radius:4px;"></div>
+                            <span style="font-size:14px;">통과 ({passed})</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:16px;height:16px;background:#ef4444;border-radius:4px;"></div>
+                            <span style="font-size:14px;">실패 ({failed})</span>
+                        </div>
+                        {f'<div style="display:flex;align-items:center;gap:8px;"><div style="width:16px;height:16px;background:#f59e0b;border-radius:4px;"></div><span style="font-size:14px;">경고 ({len(warn_results)})</span></div>' if warn_results else ''}
+                        {f'<div style="display:flex;align-items:center;gap:8px;"><div style="width:16px;height:16px;background:#6b7280;border-radius:4px;"></div><span style="font-size:14px;">오류 ({error_count})</span></div>' if error_count > 0 else ''}
+                    </div>
                 </div>
                 <div class="chart-container">
                     <h3>심각도별 분포</h3>
-                    <canvas id="severityChart"></canvas>
+                    {bar_chart_svg}
+                    <div style="display:flex;justify-content:center;gap:20px;margin-top:20px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:16px;height:16px;background:#10b981;border-radius:4px;"></div>
+                            <span style="font-size:14px;">통과</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:16px;height:16px;background:#ef4444;border-radius:4px;"></div>
+                            <span style="font-size:14px;">실패</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:16px;height:16px;background:#f59e0b;border-radius:4px;"></div>
+                            <span style="font-size:14px;">경고</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:16px;height:16px;background:#6b7280;border-radius:4px;"></div>
+                            <span style="font-size:14px;">오류</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -913,90 +1067,6 @@ def save_html(results: Dict, output_path: str):
     </div>
     
     <script>
-        // 차트 데이터
-        const resultsData = {
-            labels: ['통과', '실패', '경고', '오류'],
-            datasets: [{
-                data: [""" + str(passed) + ", " + str(failed) + ", " + str(len(warn_results)) + ", " + str(error_count) + """],
-                backgroundColor: [
-                    '#10b981',
-                    '#ef4444',
-                    '#f59e0b',
-                    '#6b7280'
-                ],
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
-        };
-        
-        // 심각도별 분포 데이터
-        const severityData = """ + json.dumps(severity_data, ensure_ascii=False) + """;
-        const severityLabels = """ + json.dumps(severity_labels, ensure_ascii=False) + """;
-        const severityChartData = {
-            labels: severityLabels.length > 0 ? severityLabels : ['N/A'],
-            datasets: [{
-                label: '통과',
-                data: severityLabels.map(s => severityData[s]?.pass || 0),
-                backgroundColor: '#10b981'
-            }, {
-                label: '실패',
-                data: severityLabels.map(s => severityData[s]?.fail || 0),
-                backgroundColor: '#ef4444'
-            }, {
-                label: '경고',
-                data: severityLabels.map(s => severityData[s]?.warn || 0),
-                backgroundColor: '#f59e0b'
-            }, {
-                label: '오류',
-                data: severityLabels.map(s => severityData[s]?.error || 0),
-                backgroundColor: '#6b7280'
-            }]
-        };
-        
-        // 결과 분포 차트 (도넛 차트)
-        const ctx1 = document.getElementById('resultsChart');
-        if (ctx1) {
-            new Chart(ctx1, {
-                type: 'doughnut',
-                data: resultsData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-        }
-        
-        // 심각도별 분포 차트 (막대 그래프)
-        const ctx2 = document.getElementById('severityChart');
-        if (ctx2 && severityLabels.length > 0) {
-            new Chart(ctx2, {
-                type: 'bar',
-                data: severityChartData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
         // 필터 기능
         function filterTable(status) {
             const rows = document.querySelectorAll('#resultsTable tbody tr');
@@ -1019,11 +1089,13 @@ def save_html(results: Dict, output_path: str):
         // 페이지 로드 시 애니메이션
         window.addEventListener('load', function() {
             const progressBar = document.querySelector('.progress-bar');
-            const targetWidth = progressBar.style.width;
-            progressBar.style.width = '0%';
-            setTimeout(() => {
-                progressBar.style.width = targetWidth;
-            }, 100);
+            if (progressBar) {
+                const targetWidth = progressBar.style.width;
+                progressBar.style.width = '0%';
+                setTimeout(() => {
+                    progressBar.style.width = targetWidth;
+                }, 100);
+            }
         });
     </script>
 </body>
