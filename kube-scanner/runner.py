@@ -324,6 +324,15 @@ def save_markdown(results: Dict, output_path: str):
 
 def save_html(results: Dict, output_path: str):
     """HTML 형식으로 저장합니다."""
+    # 체크 목록 로드하여 이름과 점수 정보 가져오기
+    checks_list = load_checks()
+    check_info = {}
+    for check in checks_list:
+        check_id = getattr(check, "id", "UNKNOWN")
+        check_name = getattr(check, "name", check_id)
+        check_points = getattr(check, "points", 0)
+        check_info[check_id] = {"name": check_name, "points": check_points}
+    
     summary = results.get("Summary", {})
     percentage = summary.get('percentage', 0)
     passed = summary.get('passed', 0)
@@ -358,13 +367,32 @@ def save_html(results: Dict, output_path: str):
     
     def get_status_badge(status):
         if status == "PASS":
-            return '<span class="badge badge-pass">✓ PASS</span>'
+            return '<span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;background:#d1fae5;color:#065f46;">PASS</span>'
         elif status == "FAIL":
-            return '<span class="badge badge-fail">✗ FAIL</span>'
+            return '<span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;background:#fee2e2;color:#991b1b;">FAIL</span>'
         elif status == "WARN":
-            return '<span class="badge badge-warn">⚠ WARN</span>'
+            return '<span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;background:#fef3c7;color:#92400e;">WARN</span>'
         else:
-            return '<span class="badge badge-error">⚠ ERROR</span>'
+            return '<span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;background:#f3f4f6;color:#374151;">ERROR</span>'
+    
+    # 점검 대상 정보 가져오기
+    import subprocess
+    target_name = "Kubernetes Cluster"
+    try:
+        result = subprocess.run(['kubectl', 'config', 'current-context'], 
+                              capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            target_name = result.stdout.strip()
+    except:
+        pass
+    
+    # 점검 일시 포맷팅
+    from datetime import datetime
+    try:
+        scan_time = datetime.fromisoformat(results.get('Timestamp', '').replace(' ', 'T').split('.')[0])
+        formatted_time = scan_time.strftime('%Y-%m-%d %H:%M:%S')
+    except:
+        formatted_time = results.get('Timestamp', 'N/A')
     
     # 결과 분류
     pass_results = [r for r in results.get("Results", []) if r.get("Result") == "PASS"]
@@ -886,110 +914,57 @@ def save_html(results: Dict, output_path: str):
         }}
     </style>
 </head>
-<body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;color:#1f2937;">
-    <div class="container" style="max-width:1200px;margin:0 auto;background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
-        <div class="header" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:40px;text-align:center;">
-            <h1 style="font-size:2.5rem;margin-bottom:10px;font-weight:700;margin:0 0 10px 0;">🛡️ Kubernetes Security Scanner</h1>
-            <div class="subtitle" style="font-size:1.1rem;opacity:0.9;">보안 점검 결과 리포트</div>
-        </div>
-        
-        <div class="content" style="padding:40px;">
-            <div class="summary-section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:40px;">
-                <div class="summary-card" style="background:#f9fafb;border-radius:12px;padding:24px;text-align:center;border:2px solid #e5e7eb;">
-                    <div class="label" style="font-size:0.875rem;color:#6b7280;margin-bottom:8px;font-weight:500;">전체 체크</div>
-                    <div class="value" style="font-size:2rem;font-weight:700;color:#1f2937;">{summary.get('total', 0)}</div>
-                </div>
-                <div class="summary-card" style="background:#f9fafb;border-radius:12px;padding:24px;text-align:center;border:2px solid #e5e7eb;">
-                    <div class="label" style="font-size:0.875rem;color:#6b7280;margin-bottom:8px;font-weight:500;">통과</div>
-                    <div class="value" style="font-size:2rem;font-weight:700;color:#10b981;">{summary.get('passed', 0)}</div>
-                </div>
-                <div class="summary-card" style="background:#f9fafb;border-radius:12px;padding:24px;text-align:center;border:2px solid #e5e7eb;">
-                    <div class="label" style="font-size:0.875rem;color:#6b7280;margin-bottom:8px;font-weight:500;">실패</div>
-                    <div class="value" style="font-size:2rem;font-weight:700;color:#ef4444;">{summary.get('failed', 0)}</div>
-                </div>
-                {f'<div class="summary-card" style="background:#f9fafb;border-radius:12px;padding:24px;text-align:center;border:2px solid #e5e7eb;"><div class="label" style="font-size:0.875rem;color:#6b7280;margin-bottom:8px;font-weight:500;">오류</div><div class="value" style="font-size:2rem;font-weight:700;color:#f59e0b;">{summary.get("error", 0)}</div></div>' if summary.get('error', 0) > 0 else ''}
-            </div>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#e0f2fe;min-height:100vh;color:#1f2937;">
+    <div class="container" style="max-width:1200px;margin:20px auto;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);overflow:hidden;">
+        <div style="background:white;padding:30px;">
+            <h1 style="font-size:1.5rem;font-weight:600;margin:0 0 30px 0;color:#1f2937;">[보안 점검 리포트]</h1>
             
-            <div class="score-card" style="background:linear-gradient(135deg,{grade_color}15 0%,{grade_color}05 100%);border:2px solid {grade_color};border-radius:12px;padding:32px;text-align:center;margin-bottom:40px;">
-                <div class="score-label" style="font-size:1.125rem;color:#6b7280;margin-bottom:12px;">보안 점수</div>
-                <div class="score-value" style="font-size:3.5rem;font-weight:700;color:{grade_color};margin-bottom:8px;">{summary.get('score', 0)}/{summary.get('max_score', 100)}</div>
-                <div class="grade" style="font-size:1.5rem;font-weight:600;color:{grade_color};">{grade}</div>
-            </div>
-            
-            <div class="progress-bar-container" style="background:#f3f4f6;border-radius:12px;height:32px;overflow:hidden;margin-bottom:40px;position:relative;">
-                <div class="progress-bar-text" style="position:absolute;width:100%;text-align:center;line-height:32px;color:#374151;font-weight:600;z-index:1;">{percentage}% 완료</div>
-                <div class="progress-bar" style="height:100%;background:linear-gradient(90deg,{grade_color} 0%,{grade_color}dd 100%);border-radius:12px;width:{percentage}%;"></div>
-            </div>
-            
-            <div class="charts-section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-bottom:40px;">
-                <div class="chart-container" style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <h3 style="font-size:1.125rem;color:#374151;margin-bottom:16px;text-align:center;">결과 분포</h3>
-                    {donut_chart_svg}
-                    <div style="display:flex;justify-content:center;gap:20px;margin-top:20px;flex-wrap:wrap;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:16px;height:16px;background:#10b981;border-radius:4px;"></div>
-                            <span style="font-size:14px;">통과 ({passed})</span>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:16px;height:16px;background:#ef4444;border-radius:4px;"></div>
-                            <span style="font-size:14px;">실패 ({failed})</span>
-                        </div>
-                        {f'<div style="display:flex;align-items:center;gap:8px;"><div style="width:16px;height:16px;background:#f59e0b;border-radius:4px;"></div><span style="font-size:14px;">경고 ({len(warn_results)})</span></div>' if warn_results else ''}
-                        {f'<div style="display:flex;align-items:center;gap:8px;"><div style="width:16px;height:16px;background:#6b7280;border-radius:4px;"></div><span style="font-size:14px;">오류 ({error_count})</span></div>' if error_count > 0 else ''}
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;gap:30px;">
+                <!-- 왼쪽: 점검 정보 -->
+                <div style="flex:1;">
+                    <div style="margin-bottom:12px;">
+                        <span style="font-weight:600;color:#374151;">점검 대상:</span>
+                        <span style="color:#6b7280;margin-left:8px;">{target_name}</span>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <span style="font-weight:600;color:#374151;">점검 일시:</span>
+                        <span style="color:#6b7280;margin-left:8px;">{formatted_time}</span>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <span style="font-weight:600;color:#374151;">총 항목수:</span>
+                        <span style="color:#6b7280;margin-left:8px;">{total}</span>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <span style="font-weight:600;color:#374151;">FAIL 항목 수:</span>
+                        <span style="color:#ef4444;margin-left:8px;font-weight:600;">{failed}</span>
                     </div>
                 </div>
-                <div class="chart-container" style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <h3 style="font-size:1.125rem;color:#374151;margin-bottom:16px;text-align:center;">심각도별 분포</h3>
-                    {bar_chart_svg}
-                    <div style="display:flex;justify-content:center;gap:20px;margin-top:20px;flex-wrap:wrap;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:16px;height:16px;background:#10b981;border-radius:4px;"></div>
-                            <span style="font-size:14px;">통과</span>
+                
+                <!-- 오른쪽: 점수 및 등급 -->
+                <div style="display:flex;align-items:center;gap:20px;">
+                    <div style="background:{grade_color};color:white;padding:12px 24px;border-radius:8px;font-weight:600;font-size:1.125rem;">
+                        {grade}
+                    </div>
+                    <div>
+                        <div style="font-size:2.5rem;font-weight:700;color:#1f2937;line-height:1;">
+                            {int(summary.get('score', 0))}점
                         </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:16px;height:16px;background:#ef4444;border-radius:4px;"></div>
-                            <span style="font-size:14px;">실패</span>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:16px;height:16px;background:#f59e0b;border-radius:4px;"></div>
-                            <span style="font-size:14px;">경고</span>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:16px;height:16px;background:#6b7280;border-radius:4px;"></div>
-                            <span style="font-size:14px;">오류</span>
+                        <div style="font-size:0.875rem;color:#6b7280;margin-top:4px;">
+                            스캔 점수
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="info-section" style="background:#f9fafb;border-radius:12px;padding:24px;margin-bottom:40px;">
-                <div class="info-item" style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e5e7eb;">
-                    <span class="info-label" style="font-weight:600;color:#374151;">스캔 ID</span>
-                    <span class="info-value" style="color:#6b7280;font-family:'Courier New',monospace;">{results.get('ScanID', 'N/A')}</span>
-                </div>
-                <div class="info-item" style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:none;">
-                    <span class="info-label" style="font-weight:600;color:#374151;">스캔 시간</span>
-                    <span class="info-value" style="color:#6b7280;font-family:'Courier New',monospace;">{results.get('Timestamp', 'N/A')}</span>
-                </div>
-            </div>
-            
-            <div class="results-section">
-                <h2 style="font-size:1.875rem;margin-bottom:24px;color:#1f2937;">상세 결과</h2>
-                <div class="filter-buttons" style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
-                    <button class="filter-btn active" onclick="filterTable('all')" style="padding:8px 16px;border:2px solid #667eea;background:#667eea;color:white;border-radius:8px;cursor:pointer;font-weight:500;">전체 ({total})</button>
-                    <button class="filter-btn" onclick="filterTable('PASS')" style="padding:8px 16px;border:2px solid #e5e7eb;background:white;border-radius:8px;cursor:pointer;font-weight:500;">통과 ({passed})</button>
-                    <button class="filter-btn" onclick="filterTable('FAIL')" style="padding:8px 16px;border:2px solid #e5e7eb;background:white;border-radius:8px;cursor:pointer;font-weight:500;">실패 ({failed})</button>
-                    {f'<button class="filter-btn" onclick="filterTable(\'WARN\')" style="padding:8px 16px;border:2px solid #e5e7eb;background:white;border-radius:8px;cursor:pointer;font-weight:500;">경고 ({len(warn_results)})</button>' if warn_results else ''}
-                    {f'<button class="filter-btn" onclick="filterTable(\'ERROR\')" style="padding:8px 16px;border:2px solid #e5e7eb;background:white;border-radius:8px;cursor:pointer;font-weight:500;">오류 ({error_count})</button>' if error_count > 0 else ''}
-                </div>
-                <table class="results-table" id="resultsTable" style="width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin-bottom:40px;">
+            <!-- 상세 결과 테이블 -->
+            <div style="margin-top:30px;">
+                <table id="resultsTable" style="width:100%;border-collapse:collapse;background:white;border:1px solid #e5e7eb;">
                     <thead style="background:#f3f4f6;">
                         <tr>
-                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">체크 ID</th>
-                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">결과</th>
-                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">심각도</th>
-                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">리소스</th>
-                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">네임스페이스</th>
+                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">항목</th>
+                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">대상</th>
+                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">결과</th>
+                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">점수</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -999,21 +974,39 @@ def save_html(results: Dict, output_path: str):
     for result in results.get("Results", []):
         check_id = result.get("CheckID", "UNKNOWN")
         status = result.get("Result", "UNKNOWN")
-        severity = result.get("Severity", "")
         obj_type = result.get("ObjectType", "")
         obj_name = result.get("ObjectName", "")
         namespace = result.get("Namespace", "")
         
-        resource = f"{obj_type}/{obj_name}" if obj_type and obj_name else "-"
-        namespace_display = namespace if namespace and namespace != "N/A" else "-"
+        # 체크 이름 가져오기
+        check_name = check_info.get(check_id, {}).get("name", check_id)
+        check_points = check_info.get(check_id, {}).get("points", 0)
+        
+        # 대상 정보 구성
+        if namespace and namespace != "N/A" and obj_name:
+            target = f"{namespace}/{obj_name}"
+        elif obj_name:
+            target = obj_name
+        elif obj_type:
+            target = obj_type
+        else:
+            target = "-"
+        
+        # 점수 계산 (FAIL이면 -points, PASS면 -)
+        if status == "FAIL":
+            score_display = f"-{int(check_points)}" if check_points > 0 else "-"
+        else:
+            score_display = "-"
+        
+        # 결과 색상
+        result_color = "#ef4444" if status == "FAIL" else "#1f2937"
         
         html += f"""
                         <tr data-status="{status}" style="border-top:1px solid #e5e7eb;">
-                            <td style="padding:16px;"><strong>{check_id}</strong></td>
-                            <td style="padding:16px;">{get_status_badge(status)}</td>
-                            <td style="padding:16px;">{severity or '-'}</td>
-                            <td style="padding:16px;">{resource}</td>
-                            <td style="padding:16px;">{namespace_display}</td>
+                            <td style="padding:12px;color:#1f2937;">{check_name}</td>
+                            <td style="padding:12px;color:#6b7280;">{target}</td>
+                            <td style="padding:12px;color:{result_color};font-weight:600;">{status}</td>
+                            <td style="padding:12px;color:#6b7280;">{score_display}</td>
                         </tr>
 """
     
@@ -1021,87 +1014,43 @@ def save_html(results: Dict, output_path: str):
                     </tbody>
                 </table>
             </div>
-            
-            <div class="details-section" style="margin-top:40px;">
-                <h2 style="font-size:1.875rem;margin-bottom:24px;color:#1f2937;">상세 정보</h2>
 """
     
-    # 상세 정보 추가
-    for result in results.get("Results", []):
-        check_id = result.get("CheckID", "UNKNOWN")
-        status = result.get("Result", "UNKNOWN")
-        reason = result.get("Reason", "")
-        remediation = result.get("Remediation", "")
-        
-        if reason or remediation:
-            status_class = status.lower()
-            border_color = "#10b981" if status == "PASS" else "#ef4444"
-            html += f"""
-                <div class="detail-card {status_class}" style="background:#f9fafb;border-left:4px solid {border_color};border-radius:8px;padding:24px;margin-bottom:24px;">
-                    <h3 style="font-size:1.25rem;margin-bottom:16px;color:#1f2937;">{check_id} - {status}</h3>
-"""
-            if reason:
-                html += f"""
-                    <div class="reason" style="background:white;padding:16px;border-radius:8px;margin-bottom:16px;color:#374151;line-height:1.6;">
-                        <strong>이슈:</strong> {reason.replace(chr(10), '<br>')}
-                    </div>
-"""
-            if remediation:
-                remediation_html = remediation.replace(chr(10), '<br>')
-                html += f"""
-                    <div class="remediation" style="background:#eff6ff;border:1px solid #bfdbfe;padding:16px;border-radius:8px;color:#1e40af;line-height:1.6;">
-                        <strong style="display:block;margin-bottom:8px;color:#1e3a8a;">조치 방법:</strong>
-                        {remediation_html}
-                    </div>
-"""
-            html += """
-                </div>
+    # FAIL 항목이 있으면 경고 메시지 추가
+    if failed > 0:
+        html += f"""
+            <div style="margin-top:20px;padding:16px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                <div style="font-weight:600;color:#991b1b;margin-bottom:8px;">주의! FAIL 항목 {failed}건 발견</div>
+                <div style="color:#6b7280;font-size:0.875rem;">보안 권고:</div>
+            </div>
 """
     
     html += """
             </div>
         </div>
         
-        <div class="footer" style="background:#f9fafb;padding:24px;text-align:center;color:#6b7280;font-size:0.875rem;">
+        <div style="background:#f9fafb;padding:20px;text-align:center;color:#6b7280;font-size:0.875rem;margin-top:20px;">
             <p style="margin:0;">Generated by Kubernetes Security Scanner</p>
         </div>
     </div>
     
     <script>
-        // 필터 기능
-        function filterTable(status) {
+        // 테이블 행 호버 효과
+        document.addEventListener('DOMContentLoaded', function() {
             const rows = document.querySelectorAll('#resultsTable tbody tr');
-            const buttons = document.querySelectorAll('.filter-btn');
-            
-            // 버튼 활성화 상태 변경
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // 행 표시/숨김
             rows.forEach(row => {
-                if (status === 'all' || row.getAttribute('data-status') === status) {
-                    row.classList.remove('hidden');
-                } else {
-                    row.classList.add('hidden');
-                }
+                row.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#f9fafb';
+                });
+                row.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = 'white';
+                });
             });
-        }
-        
-        // 페이지 로드 시 애니메이션
-        window.addEventListener('load', function() {
-            const progressBar = document.querySelector('.progress-bar');
-            if (progressBar) {
-                const targetWidth = progressBar.style.width;
-                progressBar.style.width = '0%';
-                setTimeout(() => {
-                    progressBar.style.width = targetWidth;
-                }, 100);
-            }
         });
     </script>
 </body>
 </html>
-"""
+    """
     
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html)
