@@ -886,44 +886,44 @@ def save_html(results: Dict, output_path: str):
         }}
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🛡️ Kubernetes Security Scanner</h1>
-            <div class="subtitle">보안 점검 결과 리포트</div>
+<body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;color:#1f2937;">
+    <div class="container" style="max-width:1200px;margin:0 auto;background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+        <div class="header" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:40px;text-align:center;">
+            <h1 style="font-size:2.5rem;margin-bottom:10px;font-weight:700;margin:0 0 10px 0;">🛡️ Kubernetes Security Scanner</h1>
+            <div class="subtitle" style="font-size:1.1rem;opacity:0.9;">보안 점검 결과 리포트</div>
         </div>
         
-        <div class="content">
-            <div class="summary-section">
-                <div class="summary-card">
-                    <div class="label">전체 체크</div>
-                    <div class="value">{summary.get('total', 0)}</div>
+        <div class="content" style="padding:40px;">
+            <div class="summary-section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:40px;">
+                <div class="summary-card" style="background:#f9fafb;border-radius:12px;padding:24px;text-align:center;border:2px solid #e5e7eb;">
+                    <div class="label" style="font-size:0.875rem;color:#6b7280;margin-bottom:8px;font-weight:500;">전체 체크</div>
+                    <div class="value" style="font-size:2rem;font-weight:700;color:#1f2937;">{summary.get('total', 0)}</div>
                 </div>
-                <div class="summary-card">
-                    <div class="label">통과</div>
-                    <div class="value" style="color: #10b981;">{summary.get('passed', 0)}</div>
+                <div class="summary-card" style="background:#f9fafb;border-radius:12px;padding:24px;text-align:center;border:2px solid #e5e7eb;">
+                    <div class="label" style="font-size:0.875rem;color:#6b7280;margin-bottom:8px;font-weight:500;">통과</div>
+                    <div class="value" style="font-size:2rem;font-weight:700;color:#10b981;">{summary.get('passed', 0)}</div>
                 </div>
-                <div class="summary-card">
-                    <div class="label">실패</div>
-                    <div class="value" style="color: #ef4444;">{summary.get('failed', 0)}</div>
+                <div class="summary-card" style="background:#f9fafb;border-radius:12px;padding:24px;text-align:center;border:2px solid #e5e7eb;">
+                    <div class="label" style="font-size:0.875rem;color:#6b7280;margin-bottom:8px;font-weight:500;">실패</div>
+                    <div class="value" style="font-size:2rem;font-weight:700;color:#ef4444;">{summary.get('failed', 0)}</div>
                 </div>
-                {f'<div class="summary-card"><div class="label">오류</div><div class="value" style="color: #f59e0b;">{summary.get("error", 0)}</div></div>' if summary.get('error', 0) > 0 else ''}
+                {f'<div class="summary-card" style="background:#f9fafb;border-radius:12px;padding:24px;text-align:center;border:2px solid #e5e7eb;"><div class="label" style="font-size:0.875rem;color:#6b7280;margin-bottom:8px;font-weight:500;">오류</div><div class="value" style="font-size:2rem;font-weight:700;color:#f59e0b;">{summary.get("error", 0)}</div></div>' if summary.get('error', 0) > 0 else ''}
             </div>
             
-            <div class="score-card">
-                <div class="score-label">보안 점수</div>
-                <div class="score-value">{summary.get('score', 0)}/{summary.get('max_score', 100)}</div>
-                <div class="grade">{grade}</div>
+            <div class="score-card" style="background:linear-gradient(135deg,{grade_color}15 0%,{grade_color}05 100%);border:2px solid {grade_color};border-radius:12px;padding:32px;text-align:center;margin-bottom:40px;">
+                <div class="score-label" style="font-size:1.125rem;color:#6b7280;margin-bottom:12px;">보안 점수</div>
+                <div class="score-value" style="font-size:3.5rem;font-weight:700;color:{grade_color};margin-bottom:8px;">{summary.get('score', 0)}/{summary.get('max_score', 100)}</div>
+                <div class="grade" style="font-size:1.5rem;font-weight:600;color:{grade_color};">{grade}</div>
             </div>
             
-            <div class="progress-bar-container">
-                <div class="progress-bar-text">{percentage}% 완료</div>
-                <div class="progress-bar"></div>
+            <div class="progress-bar-container" style="background:#f3f4f6;border-radius:12px;height:32px;overflow:hidden;margin-bottom:40px;position:relative;">
+                <div class="progress-bar-text" style="position:absolute;width:100%;text-align:center;line-height:32px;color:#374151;font-weight:600;z-index:1;">{percentage}% 완료</div>
+                <div class="progress-bar" style="height:100%;background:linear-gradient(90deg,{grade_color} 0%,{grade_color}dd 100%);border-radius:12px;width:{percentage}%;"></div>
             </div>
             
-            <div class="charts-section">
-                <div class="chart-container">
-                    <h3>결과 분포</h3>
+            <div class="charts-section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-bottom:40px;">
+                <div class="chart-container" style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                    <h3 style="font-size:1.125rem;color:#374151;margin-bottom:16px;text-align:center;">결과 분포</h3>
                     {donut_chart_svg}
                     <div style="display:flex;justify-content:center;gap:20px;margin-top:20px;flex-wrap:wrap;">
                         <div style="display:flex;align-items:center;gap:8px;">
@@ -938,8 +938,8 @@ def save_html(results: Dict, output_path: str):
                         {f'<div style="display:flex;align-items:center;gap:8px;"><div style="width:16px;height:16px;background:#6b7280;border-radius:4px;"></div><span style="font-size:14px;">오류 ({error_count})</span></div>' if error_count > 0 else ''}
                     </div>
                 </div>
-                <div class="chart-container">
-                    <h3>심각도별 분포</h3>
+                <div class="chart-container" style="background:white;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                    <h3 style="font-size:1.125rem;color:#374151;margin-bottom:16px;text-align:center;">심각도별 분포</h3>
                     {bar_chart_svg}
                     <div style="display:flex;justify-content:center;gap:20px;margin-top:20px;flex-wrap:wrap;">
                         <div style="display:flex;align-items:center;gap:8px;">
@@ -962,34 +962,34 @@ def save_html(results: Dict, output_path: str):
                 </div>
             </div>
             
-            <div class="info-section">
-                <div class="info-item">
-                    <span class="info-label">스캔 ID</span>
-                    <span class="info-value">{results.get('ScanID', 'N/A')}</span>
+            <div class="info-section" style="background:#f9fafb;border-radius:12px;padding:24px;margin-bottom:40px;">
+                <div class="info-item" style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e5e7eb;">
+                    <span class="info-label" style="font-weight:600;color:#374151;">스캔 ID</span>
+                    <span class="info-value" style="color:#6b7280;font-family:'Courier New',monospace;">{results.get('ScanID', 'N/A')}</span>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">스캔 시간</span>
-                    <span class="info-value">{results.get('Timestamp', 'N/A')}</span>
+                <div class="info-item" style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:none;">
+                    <span class="info-label" style="font-weight:600;color:#374151;">스캔 시간</span>
+                    <span class="info-value" style="color:#6b7280;font-family:'Courier New',monospace;">{results.get('Timestamp', 'N/A')}</span>
                 </div>
             </div>
             
             <div class="results-section">
-                <h2>상세 결과</h2>
-                <div class="filter-buttons">
-                    <button class="filter-btn active" onclick="filterTable('all')">전체 ({total})</button>
-                    <button class="filter-btn" onclick="filterTable('PASS')">통과 ({passed})</button>
-                    <button class="filter-btn" onclick="filterTable('FAIL')">실패 ({failed})</button>
-                    {f'<button class="filter-btn" onclick="filterTable(\'WARN\')">경고 ({len(warn_results)})</button>' if warn_results else ''}
-                    {f'<button class="filter-btn" onclick="filterTable(\'ERROR\')">오류 ({error_count})</button>' if error_count > 0 else ''}
+                <h2 style="font-size:1.875rem;margin-bottom:24px;color:#1f2937;">상세 결과</h2>
+                <div class="filter-buttons" style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+                    <button class="filter-btn active" onclick="filterTable('all')" style="padding:8px 16px;border:2px solid #667eea;background:#667eea;color:white;border-radius:8px;cursor:pointer;font-weight:500;">전체 ({total})</button>
+                    <button class="filter-btn" onclick="filterTable('PASS')" style="padding:8px 16px;border:2px solid #e5e7eb;background:white;border-radius:8px;cursor:pointer;font-weight:500;">통과 ({passed})</button>
+                    <button class="filter-btn" onclick="filterTable('FAIL')" style="padding:8px 16px;border:2px solid #e5e7eb;background:white;border-radius:8px;cursor:pointer;font-weight:500;">실패 ({failed})</button>
+                    {f'<button class="filter-btn" onclick="filterTable(\'WARN\')" style="padding:8px 16px;border:2px solid #e5e7eb;background:white;border-radius:8px;cursor:pointer;font-weight:500;">경고 ({len(warn_results)})</button>' if warn_results else ''}
+                    {f'<button class="filter-btn" onclick="filterTable(\'ERROR\')" style="padding:8px 16px;border:2px solid #e5e7eb;background:white;border-radius:8px;cursor:pointer;font-weight:500;">오류 ({error_count})</button>' if error_count > 0 else ''}
                 </div>
-                <table class="results-table" id="resultsTable">
-                    <thead>
+                <table class="results-table" id="resultsTable" style="width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin-bottom:40px;">
+                    <thead style="background:#f3f4f6;">
                         <tr>
-                            <th>체크 ID</th>
-                            <th>결과</th>
-                            <th>심각도</th>
-                            <th>리소스</th>
-                            <th>네임스페이스</th>
+                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">체크 ID</th>
+                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">결과</th>
+                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">심각도</th>
+                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">리소스</th>
+                            <th style="padding:16px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.05em;">네임스페이스</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1008,12 +1008,12 @@ def save_html(results: Dict, output_path: str):
         namespace_display = namespace if namespace and namespace != "N/A" else "-"
         
         html += f"""
-                        <tr data-status="{status}">
-                            <td><strong>{check_id}</strong></td>
-                            <td>{get_status_badge(status)}</td>
-                            <td>{severity or '-'}</td>
-                            <td>{resource}</td>
-                            <td>{namespace_display}</td>
+                        <tr data-status="{status}" style="border-top:1px solid #e5e7eb;">
+                            <td style="padding:16px;"><strong>{check_id}</strong></td>
+                            <td style="padding:16px;">{get_status_badge(status)}</td>
+                            <td style="padding:16px;">{severity or '-'}</td>
+                            <td style="padding:16px;">{resource}</td>
+                            <td style="padding:16px;">{namespace_display}</td>
                         </tr>
 """
     
@@ -1022,8 +1022,8 @@ def save_html(results: Dict, output_path: str):
                 </table>
             </div>
             
-            <div class="details-section">
-                <h2>상세 정보</h2>
+            <div class="details-section" style="margin-top:40px;">
+                <h2 style="font-size:1.875rem;margin-bottom:24px;color:#1f2937;">상세 정보</h2>
 """
     
     # 상세 정보 추가
@@ -1035,21 +1035,22 @@ def save_html(results: Dict, output_path: str):
         
         if reason or remediation:
             status_class = status.lower()
+            border_color = "#10b981" if status == "PASS" else "#ef4444"
             html += f"""
-                <div class="detail-card {status_class}">
-                    <h3>{check_id} - {status}</h3>
+                <div class="detail-card {status_class}" style="background:#f9fafb;border-left:4px solid {border_color};border-radius:8px;padding:24px;margin-bottom:24px;">
+                    <h3 style="font-size:1.25rem;margin-bottom:16px;color:#1f2937;">{check_id} - {status}</h3>
 """
             if reason:
                 html += f"""
-                    <div class="reason">
+                    <div class="reason" style="background:white;padding:16px;border-radius:8px;margin-bottom:16px;color:#374151;line-height:1.6;">
                         <strong>이슈:</strong> {reason.replace(chr(10), '<br>')}
                     </div>
 """
             if remediation:
                 remediation_html = remediation.replace(chr(10), '<br>')
                 html += f"""
-                    <div class="remediation">
-                        <strong>조치 방법:</strong><br>
+                    <div class="remediation" style="background:#eff6ff;border:1px solid #bfdbfe;padding:16px;border-radius:8px;color:#1e40af;line-height:1.6;">
+                        <strong style="display:block;margin-bottom:8px;color:#1e3a8a;">조치 방법:</strong>
                         {remediation_html}
                     </div>
 """
@@ -1061,8 +1062,8 @@ def save_html(results: Dict, output_path: str):
             </div>
         </div>
         
-        <div class="footer">
-            <p>Generated by Kubernetes Security Scanner</p>
+        <div class="footer" style="background:#f9fafb;padding:24px;text-align:center;color:#6b7280;font-size:0.875rem;">
+            <p style="margin:0;">Generated by Kubernetes Security Scanner</p>
         </div>
     </div>
     
