@@ -340,18 +340,18 @@ def save_html(results: Dict, output_path: str):
     error_count = summary.get('error', 0)
     total = summary.get('total', 0)
     
-    # Grade 결정
+    # Grade 결정 (한국어)
     if percentage == 100:
-        grade = "Perfect"
+        grade = "양호"
         grade_color = "#10b981"  # green
     elif percentage >= 80:
-        grade = "Good"
-        grade_color = "#3b82f6"  # blue
+        grade = "양호"
+        grade_color = "#10b981"  # green
     elif percentage >= 60:
-        grade = "Fair"
+        grade = "주의"
         grade_color = "#f59e0b"  # amber
     else:
-        grade = "Poor - Needs Improvement"
+        grade = "심각"
         grade_color = "#ef4444"  # red
     
     # Status별 색상
@@ -1052,8 +1052,21 @@ def save_html(results: Dict, output_path: str):
 </html>
     """
     
-    with open(output_path, 'w', encoding='utf-8') as f:
+    # HTML 파일 저장 (BOM 없이 UTF-8)
+    with open(output_path, 'w', encoding='utf-8', newline='') as f:
         f.write(html)
+    
+    # 파일이 제대로 생성되었는지 확인
+    import os
+    if os.path.exists(output_path):
+        file_size = os.path.getsize(output_path)
+        if file_size == 0:
+            raise Exception(f"HTML 파일이 비어있습니다: {output_path}")
+        # HTML 시작 부분 확인
+        with open(output_path, 'r', encoding='utf-8') as check_file:
+            first_line = check_file.readline()
+            if not first_line.strip().startswith('<!DOCTYPE'):
+                raise Exception(f"HTML 파일 형식이 올바르지 않습니다: {first_line[:50]}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Kubernetes Security Scanner CLI")
