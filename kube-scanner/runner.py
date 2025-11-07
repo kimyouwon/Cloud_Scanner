@@ -543,384 +543,20 @@ def save_html(results: Dict, output_path: str):
     donut_chart_svg = create_donut_chart(passed, failed, len(warn_results), error_count, total)
     bar_chart_svg = create_bar_chart(severity_data, severity_labels)
     
-    html = f"""<!DOCTYPE html>
+    # HTML 생성 - 모든 스타일을 인라인으로 적용
+    html_content = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kubernetes Security Scanner Results</title>
-    <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
-        
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #1f2937;
-        }}
-        
-        .container {{
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }}
-        
-        .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            text-align: center;
-        }}
-        
-        .header h1 {{
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }}
-        
-        .header .subtitle {{
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }}
-        
-        .content {{
-            padding: 40px;
-        }}
-        
-        .summary-section {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }}
-        
-        .summary-card {{
-            background: #f9fafb;
-            border-radius: 12px;
-            padding: 24px;
-            text-align: center;
-            border: 2px solid #e5e7eb;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }}
-        
-        .summary-card:hover {{
-            transform: translateY(-4px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-        }}
-        
-        .summary-card .label {{
-            font-size: 0.875rem;
-            color: #6b7280;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }}
-        
-        .summary-card .value {{
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1f2937;
-        }}
-        
-        .score-card {{
-            background: linear-gradient(135deg, {grade_color}15 0%, {grade_color}05 100%);
-            border: 2px solid {grade_color};
-            border-radius: 12px;
-            padding: 32px;
-            text-align: center;
-            margin-bottom: 40px;
-        }}
-        
-        .score-card .score-label {{
-            font-size: 1.125rem;
-            color: #6b7280;
-            margin-bottom: 12px;
-        }}
-        
-        .score-card .score-value {{
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: {grade_color};
-            margin-bottom: 8px;
-        }}
-        
-        .score-card .grade {{
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: {grade_color};
-        }}
-        
-        .info-section {{
-            background: #f9fafb;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 40px;
-        }}
-        
-        .info-section .info-item {{
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }}
-        
-        .info-section .info-item:last-child {{
-            border-bottom: none;
-        }}
-        
-        .info-section .info-label {{
-            font-weight: 600;
-            color: #374151;
-        }}
-        
-        .info-section .info-value {{
-            color: #6b7280;
-            font-family: 'Courier New', monospace;
-        }}
-        
-        .results-section h2 {{
-            font-size: 1.875rem;
-            margin-bottom: 24px;
-            color: #1f2937;
-        }}
-        
-        .results-table {{
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin-bottom: 40px;
-        }}
-        
-        .results-table thead {{
-            background: #f3f4f6;
-        }}
-        
-        .results-table th {{
-            padding: 16px;
-            text-align: left;
-            font-weight: 600;
-            color: #374151;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }}
-        
-        .results-table td {{
-            padding: 16px;
-            border-top: 1px solid #e5e7eb;
-        }}
-        
-        .results-table tbody tr:hover {{
-            background: #f9fafb;
-        }}
-        
-        .badge {{
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }}
-        
-        .badge-pass {{
-            background: #d1fae5;
-            color: #065f46;
-        }}
-        
-        .badge-fail {{
-            background: #fee2e2;
-            color: #991b1b;
-        }}
-        
-        .badge-warn {{
-            background: #fef3c7;
-            color: #92400e;
-        }}
-        
-        .badge-error {{
-            background: #f3f4f6;
-            color: #374151;
-        }}
-        
-        .details-section {{
-            margin-top: 40px;
-        }}
-        
-        .detail-card {{
-            background: #f9fafb;
-            border-left: 4px solid #ef4444;
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }}
-        
-        .detail-card.pass {{
-            border-left-color: #10b981;
-        }}
-        
-        .detail-card h3 {{
-            font-size: 1.25rem;
-            margin-bottom: 16px;
-            color: #1f2937;
-        }}
-        
-        .detail-card .reason {{
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            color: #374151;
-            line-height: 1.6;
-        }}
-        
-        .detail-card .remediation {{
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            padding: 16px;
-            border-radius: 8px;
-            color: #1e40af;
-            line-height: 1.6;
-        }}
-        
-        .detail-card .remediation strong {{
-            display: block;
-            margin-bottom: 8px;
-            color: #1e3a8a;
-        }}
-        
-        .footer {{
-            background: #f9fafb;
-            padding: 24px;
-            text-align: center;
-            color: #6b7280;
-            font-size: 0.875rem;
-        }}
-        
-        .charts-section {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            margin-bottom: 40px;
-        }}
-        
-        .chart-container {{
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }}
-        
-        .chart-container h3 {{
-            font-size: 1.125rem;
-            color: #374151;
-            margin-bottom: 16px;
-            text-align: center;
-        }}
-        
-        .progress-bar-container {{
-            background: #f3f4f6;
-            border-radius: 12px;
-            height: 32px;
-            overflow: hidden;
-            margin-bottom: 40px;
-            position: relative;
-        }}
-        
-        .progress-bar {{
-            height: 100%;
-            background: linear-gradient(90deg, {grade_color} 0%, {grade_color}dd 100%);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 0.875rem;
-            transition: width 1s ease-in-out;
-            width: {percentage}%;
-        }}
-        
-        .progress-bar-text {{
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            line-height: 32px;
-            color: #374151;
-            font-weight: 600;
-            z-index: 1;
-        }}
-        
-        .filter-buttons {{
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }}
-        
-        .filter-btn {{
-            padding: 8px 16px;
-            border: 2px solid #e5e7eb;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-        }}
-        
-        .filter-btn:hover {{
-            border-color: #667eea;
-            background: #f9fafb;
-        }}
-        
-        .filter-btn.active {{
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }}
-        
-        .hidden {{
-            display: none;
-        }}
-        
-        @media (max-width: 768px) {{
-            .header h1 {{
-                font-size: 1.75rem;
-            }}
-            
-            .summary-section {{
-                grid-template-columns: 1fr;
-            }}
-            
-            .results-table {{
-                font-size: 0.875rem;
-            }}
-            
-            .results-table th,
-            .results-table td {{
-                padding: 12px 8px;
-            }}
-        }}
-    </style>
 </head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#e0f2fe;min-height:100vh;color:#1f2937;">
-    <div class="container" style="max-width:1200px;margin:20px auto;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);overflow:hidden;">
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#e0f2fe;min-height:100vh;">
+    <div style="max-width:1200px;margin:20px auto;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);overflow:hidden;">
         <div style="background:white;padding:30px;">
             <h1 style="font-size:1.5rem;font-weight:600;margin:0 0 30px 0;color:#1f2937;">[보안 점검 리포트]</h1>
             
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;gap:30px;">
-                <!-- 왼쪽: 점검 정보 -->
                 <div style="flex:1;">
                     <div style="margin-bottom:12px;">
                         <span style="font-weight:600;color:#374151;">점검 대상:</span>
@@ -940,7 +576,6 @@ def save_html(results: Dict, output_path: str):
                     </div>
                 </div>
                 
-                <!-- 오른쪽: 점수 및 등급 -->
                 <div style="display:flex;align-items:center;gap:20px;">
                     <div style="background:{grade_color};color:white;padding:12px 24px;border-radius:8px;font-weight:600;font-size:1.125rem;">
                         {grade}
@@ -956,9 +591,8 @@ def save_html(results: Dict, output_path: str):
                 </div>
             </div>
             
-            <!-- 상세 결과 테이블 -->
             <div style="margin-top:30px;">
-                <table id="resultsTable" style="width:100%;border-collapse:collapse;background:white;border:1px solid #e5e7eb;">
+                <table style="width:100%;border-collapse:collapse;background:white;border:1px solid #e5e7eb;">
                     <thead style="background:#f3f4f6;">
                         <tr>
                             <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">항목</th>
@@ -1001,8 +635,8 @@ def save_html(results: Dict, output_path: str):
         # 결과 색상
         result_color = "#ef4444" if status == "FAIL" else "#1f2937"
         
-        html += f"""
-                        <tr data-status="{status}" style="border-top:1px solid #e5e7eb;">
+        html_content += f"""
+                        <tr style="border-top:1px solid #e5e7eb;">
                             <td style="padding:12px;color:#1f2937;">{check_name}</td>
                             <td style="padding:12px;color:#6b7280;">{target}</td>
                             <td style="padding:12px;color:{result_color};font-weight:600;">{status}</td>
@@ -1010,7 +644,7 @@ def save_html(results: Dict, output_path: str):
                         </tr>
 """
     
-    html += """
+    html_content += """
                     </tbody>
                 </table>
             </div>
@@ -1018,39 +652,24 @@ def save_html(results: Dict, output_path: str):
     
     # FAIL 항목이 있으면 경고 메시지 추가
     if failed > 0:
-        html += f"""
+        html_content += f"""
             <div style="margin-top:20px;padding:16px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
                 <div style="font-weight:600;color:#991b1b;margin-bottom:8px;">주의! FAIL 항목 {failed}건 발견</div>
                 <div style="color:#6b7280;font-size:0.875rem;">보안 권고:</div>
             </div>
 """
     
-    html += """
-            </div>
+    html_content += """
         </div>
-        
-        <div style="background:#f9fafb;padding:20px;text-align:center;color:#6b7280;font-size:0.875rem;margin-top:20px;">
+        <div style="background:#f9fafb;padding:20px;text-align:center;color:#6b7280;font-size:0.875rem;">
             <p style="margin:0;">Generated by Kubernetes Security Scanner</p>
         </div>
     </div>
-    
-    <script>
-        // 테이블 행 호버 효과
-        document.addEventListener('DOMContentLoaded', function() {
-            const rows = document.querySelectorAll('#resultsTable tbody tr');
-            rows.forEach(row => {
-                row.addEventListener('mouseenter', function() {
-                    this.style.backgroundColor = '#f9fafb';
-                });
-                row.addEventListener('mouseleave', function() {
-                    this.style.backgroundColor = 'white';
-                });
-            });
-        });
-    </script>
 </body>
 </html>
-    """
+"""
+    
+    html = html_content
     
     # HTML 파일 저장 (BOM 없이 UTF-8)
     try:
