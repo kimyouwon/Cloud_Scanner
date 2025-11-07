@@ -1,3 +1,4 @@
+# 보안 점검 항목: API Server 로그 관리
 # scanner/checks/api_server_audit.py
 from .base import Check
 import subprocess, json, traceback
@@ -7,6 +8,7 @@ class APIServerAuditCheck(Check):
     name = "API Server 감사(audit) 로그 설정 검사"
     category = "ControlPlane"
     severity = "High"
+    points = 6
 
     FLAGS = [
         "--audit-log-path",

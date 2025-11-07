@@ -1,3 +1,4 @@
+# 보안 점검 항목: API Server 비인증 접근 차단
 # scanner/checks/api_server_anonymous.py
 from .base import Check
 import subprocess, json, traceback
@@ -7,6 +8,7 @@ class APIServerAnonymousCheck(Check):
     name = "API Server 익명 접근 및 service-account-lookup 검사"
     category = "ControlPlane"
     severity = "Critical"
+    points = 6
 
     def _kubectl(self, args, kubeconfig=''):
         cmd = ["kubectl"] + args

@@ -1,3 +1,4 @@
+# 보안 점검 항목: Pod hostNetwork 사용 검사 (네트워크 격리 확인)
 from .base import Check
 from typing import Dict, List
 from kubernetes import client
@@ -8,6 +9,7 @@ class HostNetworkCheck(Check):
     name = "Pod hostNetwork 검사"
     category = "Pod"
     severity = "High"
+    points = 6
 
     def run(self, k8s_client) -> List[Dict]:
         findings = []

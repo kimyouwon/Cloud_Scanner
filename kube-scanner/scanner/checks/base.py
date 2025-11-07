@@ -11,6 +11,7 @@ class Check(ABC):
     category: str = ""
     severity: str = ""
     description: str = ""
+    points: int = 0  # 이 체크 항목의 점수 (PASS 시 획득, FAIL/ERROR 시 0점)
 
     @abstractmethod
     def run(self, k8s_client=None, kubeconfig: str = '') -> List[Dict[str, Any]]:
@@ -33,6 +34,7 @@ class Check(ABC):
             "name": self.name,
             "category": self.category,
             "severity": self.severity,
-            "description": self.description
+            "description": self.description,
+            "points": self.points
         }
 

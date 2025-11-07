@@ -1,3 +1,4 @@
+# 보안 점검 항목: API Server SSL/TLS 적용
 # scanner/checks/api_server_tls.py
 from .base import Check
 import subprocess, json, traceback
@@ -7,6 +8,7 @@ class APIServerTLSCheck(Check):
     name = "API Server SSL/TLS 설정 검사"
     category = "ControlPlane"
     severity = "Critical"
+    points = 6
 
     TLS_FLAGS = [
         "--secure-port",

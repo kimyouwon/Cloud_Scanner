@@ -1,3 +1,4 @@
+# 보안 점검 항목: API Server 서비스 API 외부 오픈 금지
 # scanner/checks/control_plane_bind_address.py
 from .base import Check
 import subprocess, json
@@ -7,6 +8,7 @@ class ControlPlaneBindAddressCheck(Check):
     name = "Control Plane bind-address (Scheduler / ControllerManager) 검사"
     category = "ControlPlane"
     severity = "High"
+    points = 6
 
     SAFE_VALUES = {"127.0.0.1", "localhost", "::1"}
 

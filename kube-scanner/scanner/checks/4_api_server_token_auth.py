@@ -1,3 +1,4 @@
+# 보안 점검 항목: API Server 취약한 방식의 인증 사용 제한
 # scanner/checks/api_server_token_auth.py
 from .base import Check
 import subprocess, json
@@ -7,6 +8,7 @@ class APIServerTokenAuthCheck(Check):
     name = "API Server --token-auth-file (정적 토큰) 사용 검사"
     category = "ControlPlane"
     severity = "Critical"
+    points = 6
 
     def _kubectl(self, args, kubeconfig=''):
         cmd = ["kubectl"] + args

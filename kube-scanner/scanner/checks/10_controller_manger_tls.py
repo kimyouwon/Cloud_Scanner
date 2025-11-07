@@ -1,3 +1,4 @@
+# 보안 점검 항목: Controller Manager SSL/TLS 적용
 # scanner/checks/controller_manager_tls.py
 from .base import Check
 import subprocess, json, traceback
@@ -7,6 +8,7 @@ class ControllerManagerTLSCheck(Check):
     name = "Controller Manager SSL/TLS 설정 검사"
     category = "ControlPlane"
     severity = "High"
+    points = 6
 
     FLAGS = [
         "--root-ca-file",

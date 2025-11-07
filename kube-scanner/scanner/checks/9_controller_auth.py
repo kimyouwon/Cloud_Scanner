@@ -1,3 +1,4 @@
+# 보안 점검 항목: Controller 인증 제어
 # scanner/checks/controller_auth.py
 from .base import Check
 import subprocess, json, traceback
@@ -7,6 +8,7 @@ class ControllerAuthCheck(Check):
     name = "Controller 인증 제어 (ServiceAccount credentials 사용 및 private key 설정) 검사"
     category = "ControlPlane"
     severity = "High"
+    points = 6
 
     REQUIRED_FLAGS = [
         "--use-service-account-credentials",

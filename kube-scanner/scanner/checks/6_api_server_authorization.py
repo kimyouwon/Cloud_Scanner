@@ -1,3 +1,4 @@
+# 보안 점검 항목: API Server 권한 제어
 # scanner/checks/api_server_authorization.py
 from .base import Check
 import subprocess, json
@@ -7,6 +8,7 @@ class APIServerAuthorizationCheck(Check):
     name = "API Server authorization mode (AlwaysAllow) 검사"
     category = "ControlPlane"
     severity = "Critical"
+    points = 6
 
     def _kubectl(self, args, kubeconfig=''):
         cmd = ["kubectl"] + args

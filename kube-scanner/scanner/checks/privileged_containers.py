@@ -1,3 +1,4 @@
+# 보안 점검 항목: 컨테이너 권한 제어
 from .base import Check
 from typing import List, Dict
 import traceback
@@ -7,6 +8,7 @@ class PrivilegedCheck(Check):
     name = "Container privileged 검사"
     category = "Pod"
     severity = "High"
+    points = 5
 
     def run(self, k8s_client) -> List[Dict]:
         findings = []
