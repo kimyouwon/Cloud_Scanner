@@ -326,6 +326,10 @@ def save_html(results: Dict, output_path: str):
     """HTML 형식으로 저장합니다."""
     summary = results.get("Summary", {})
     percentage = summary.get('percentage', 0)
+    passed = summary.get('passed', 0)
+    failed = summary.get('failed', 0)
+    error_count = summary.get('error', 0)
+    total = summary.get('total', 0)
     
     # Grade 결정
     if percentage == 100:
@@ -362,12 +366,37 @@ def save_html(results: Dict, output_path: str):
         else:
             return '<span class="badge badge-error">⚠ ERROR</span>'
     
+    # 결과 분류
+    pass_results = [r for r in results.get("Results", []) if r.get("Result") == "PASS"]
+    fail_results = [r for r in results.get("Results", []) if r.get("Result") == "FAIL"]
+    warn_results = [r for r in results.get("Results", []) if r.get("Result") == "WARN"]
+    error_results = [r for r in results.get("Results", []) if r.get("Result") == "ERROR"]
+    
+    # 심각도별 분포 계산
+    severity_data = {}
+    for result in results.get("Results", []):
+        severity = result.get("Severity", "N/A")
+        status = result.get("Result", "UNKNOWN")
+        if severity not in severity_data:
+            severity_data[severity] = {"pass": 0, "fail": 0, "warn": 0, "error": 0}
+        if status == "PASS":
+            severity_data[severity]["pass"] += 1
+        elif status == "FAIL":
+            severity_data[severity]["fail"] += 1
+        elif status == "WARN":
+            severity_data[severity]["warn"] += 1
+        else:
+            severity_data[severity]["error"] += 1
+    
+    severity_labels = list(severity_data.keys()) if severity_data else ["N/A"]
+    
     html = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kubernetes Security Scanner Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {{
             margin: 0;
@@ -627,6 +656,92 @@ def save_html(results: Dict, output_path: str):
             font-size: 0.875rem;
         }}
         
+        .charts-section {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }}
+        
+        .chart-container {{
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .chart-container h3 {{
+            font-size: 1.125rem;
+            color: #374151;
+            margin-bottom: 16px;
+            text-align: center;
+        }}
+        
+        .progress-bar-container {{
+            background: #f3f4f6;
+            border-radius: 12px;
+            height: 32px;
+            overflow: hidden;
+            margin-bottom: 40px;
+            position: relative;
+        }}
+        
+        .progress-bar {{
+            height: 100%;
+            background: linear-gradient(90deg, {grade_color} 0%, {grade_color}dd 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.875rem;
+            transition: width 1s ease-in-out;
+            width: {percentage}%;
+        }}
+        
+        .progress-bar-text {{
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 32px;
+            color: #374151;
+            font-weight: 600;
+            z-index: 1;
+        }}
+        
+        .filter-buttons {{
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }}
+        
+        .filter-btn {{
+            padding: 8px 16px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }}
+        
+        .filter-btn:hover {{
+            border-color: #667eea;
+            background: #f9fafb;
+        }}
+        
+        .filter-btn.active {{
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }}
+        
+        .hidden {{
+            display: none;
+        }}
+        
         @media (max-width: 768px) {{
             .header h1 {{
                 font-size: 1.75rem;
@@ -677,6 +792,22 @@ def save_html(results: Dict, output_path: str):
                 <div class="grade">{grade}</div>
             </div>
             
+            <div class="progress-bar-container">
+                <div class="progress-bar-text">{percentage}% 완료</div>
+                <div class="progress-bar"></div>
+            </div>
+            
+            <div class="charts-section">
+                <div class="chart-container">
+                    <h3>결과 분포</h3>
+                    <canvas id="resultsChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>심각도별 분포</h3>
+                    <canvas id="severityChart"></canvas>
+                </div>
+            </div>
+            
             <div class="info-section">
                 <div class="info-item">
                     <span class="info-label">스캔 ID</span>
@@ -690,7 +821,14 @@ def save_html(results: Dict, output_path: str):
             
             <div class="results-section">
                 <h2>상세 결과</h2>
-                <table class="results-table">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterTable('all')">전체 ({total})</button>
+                    <button class="filter-btn" onclick="filterTable('PASS')">통과 ({passed})</button>
+                    <button class="filter-btn" onclick="filterTable('FAIL')">실패 ({failed})</button>
+                    {f'<button class="filter-btn" onclick="filterTable(\'WARN\')">경고 ({len(warn_results)})</button>' if warn_results else ''}
+                    {f'<button class="filter-btn" onclick="filterTable(\'ERROR\')">오류 ({error_count})</button>' if error_count > 0 else ''}
+                </div>
+                <table class="results-table" id="resultsTable">
                     <thead>
                         <tr>
                             <th>체크 ID</th>
@@ -716,7 +854,7 @@ def save_html(results: Dict, output_path: str):
         namespace_display = namespace if namespace and namespace != "N/A" else "-"
         
         html += f"""
-                        <tr>
+                        <tr data-status="{status}">
                             <td><strong>{check_id}</strong></td>
                             <td>{get_status_badge(status)}</td>
                             <td>{severity or '-'}</td>
@@ -773,6 +911,121 @@ def save_html(results: Dict, output_path: str):
             <p>Generated by Kubernetes Security Scanner</p>
         </div>
     </div>
+    
+    <script>
+        // 차트 데이터
+        const resultsData = {
+            labels: ['통과', '실패', '경고', '오류'],
+            datasets: [{
+                data: [""" + str(passed) + ", " + str(failed) + ", " + str(len(warn_results)) + ", " + str(error_count) + """],
+                backgroundColor: [
+                    '#10b981',
+                    '#ef4444',
+                    '#f59e0b',
+                    '#6b7280'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        };
+        
+        // 심각도별 분포 데이터
+        const severityData = """ + json.dumps(severity_data, ensure_ascii=False) + """;
+        const severityLabels = """ + json.dumps(severity_labels, ensure_ascii=False) + """;
+        const severityChartData = {
+            labels: severityLabels.length > 0 ? severityLabels : ['N/A'],
+            datasets: [{
+                label: '통과',
+                data: severityLabels.map(s => severityData[s]?.pass || 0),
+                backgroundColor: '#10b981'
+            }, {
+                label: '실패',
+                data: severityLabels.map(s => severityData[s]?.fail || 0),
+                backgroundColor: '#ef4444'
+            }, {
+                label: '경고',
+                data: severityLabels.map(s => severityData[s]?.warn || 0),
+                backgroundColor: '#f59e0b'
+            }, {
+                label: '오류',
+                data: severityLabels.map(s => severityData[s]?.error || 0),
+                backgroundColor: '#6b7280'
+            }]
+        };
+        
+        // 결과 분포 차트 (도넛 차트)
+        const ctx1 = document.getElementById('resultsChart');
+        if (ctx1) {
+            new Chart(ctx1, {
+                type: 'doughnut',
+                data: resultsData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 심각도별 분포 차트 (막대 그래프)
+        const ctx2 = document.getElementById('severityChart');
+        if (ctx2 && severityLabels.length > 0) {
+            new Chart(ctx2, {
+                type: 'bar',
+                data: severityChartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 필터 기능
+        function filterTable(status) {
+            const rows = document.querySelectorAll('#resultsTable tbody tr');
+            const buttons = document.querySelectorAll('.filter-btn');
+            
+            // 버튼 활성화 상태 변경
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 행 표시/숨김
+            rows.forEach(row => {
+                if (status === 'all' || row.getAttribute('data-status') === status) {
+                    row.classList.remove('hidden');
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+        }
+        
+        // 페이지 로드 시 애니메이션
+        window.addEventListener('load', function() {
+            const progressBar = document.querySelector('.progress-bar');
+            const targetWidth = progressBar.style.width;
+            progressBar.style.width = '0%';
+            setTimeout(() => {
+                progressBar.style.width = targetWidth;
+            }, 100);
+        });
+    </script>
 </body>
 </html>
 """
@@ -888,6 +1141,32 @@ if __name__ == "__main__":
                 with open(args.output, 'w', encoding='utf-8') as f:
                     f.write(output)
                 print(f"\n[OK] Results saved to {args.output}", file=sys.stderr)
+        else:
+            # 자동으로 결과 파일 생성
+            from datetime import datetime
+            scan_id = results.get('ScanID', 'scan')
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            
+            # results 디렉토리 생성
+            results_dir = 'results'
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+                print(f"[INFO] Created results directory: {results_dir}", file=sys.stderr)
+            
+            # 파일명 생성
+            base_filename = f"{scan_id}_{timestamp}"
+            
+            # JSON 파일 저장
+            json_path = os.path.join(results_dir, f"{base_filename}.json")
+            with open(json_path, 'w', encoding='utf-8') as f:
+                f.write(output)
+            print(f"\n[OK] JSON results saved to {json_path}", file=sys.stderr)
+            
+            # HTML 파일 저장
+            html_path = os.path.join(results_dir, f"{base_filename}.html")
+            save_html(results, html_path)
+            print(f"[OK] HTML report saved to {html_path}", file=sys.stderr)
+            print(f"[INFO] Open {html_path} in your browser to view the report", file=sys.stderr)
         
         sys.exit(0)
         
