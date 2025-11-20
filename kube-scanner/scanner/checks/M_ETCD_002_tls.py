@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback
 
 class EtcdTLSCheck(Check):
-    id = "CHK-ETCD-TLS-001"
+    id = "CHK-M-ETCD-002"
     name = "etcd SSL/TLS 적용 검사"
     category = "ControlPlane"
     severity = "Critical"

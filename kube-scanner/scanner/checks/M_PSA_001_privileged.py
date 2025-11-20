@@ -4,7 +4,7 @@ from typing import List, Dict
 import traceback
 
 class PrivilegedCheck(Check):
-    id = "CHK-002"
+    id = "CHK-M-PSA-001"
     name = "Container privileged 검사"
     category = "Pod"
     severity = "High"

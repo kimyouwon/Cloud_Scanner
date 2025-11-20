@@ -8,7 +8,7 @@ except ImportError:
     yaml = None
 
 class EtcdEncryptionCheck(Check):
-    id = "CHK-ETCD-001"
+    id = "CHK-M-ETCD-001"
     name = "etcd 암호화 적용 검사"
     category = "ControlPlane"
     severity = "Critical"

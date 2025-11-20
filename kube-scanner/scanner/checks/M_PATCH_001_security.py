@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback, re
 
 class SecurityPatchesCheck(Check):
-    id = "CHK-PATCH-001"
+    id = "CHK-M-PATCH-001"
     name = "최신 보안 패치 적용 검사"
     category = "ControlPlane"
     severity = "High"

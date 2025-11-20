@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback
 
 class APIServerTLSCheck(Check):
-    id = "CHK-API-TLS-001"
+    id = "CHK-M-API-005"
     name = "API Server SSL/TLS 설정 검사"
     category = "ControlPlane"
     severity = "Critical"

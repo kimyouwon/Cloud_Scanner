@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback, stat, os
 
 class ConfigFilePermissionsCheck(Check):
-    id = "CHK-FILE-001"
+    id = "CHK-M-FILE-001"
     name = "환경설정 파일 권한 설정 검사"
     category = "ControlPlane"
     severity = "High"

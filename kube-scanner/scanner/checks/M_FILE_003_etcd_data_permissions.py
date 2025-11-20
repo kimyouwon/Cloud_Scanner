@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback, stat, os
 
 class EtcdDataDirectoryPermissionsCheck(Check):
-    id = "CHK-FILE-003"
+    id = "CHK-M-FILE-003"
     name = "etcd 데이터 디렉터리 권한 설정 검사"
     category = "ControlPlane"
     severity = "Critical"

@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback
 
 class APIServerAuditCheck(Check):
-    id = "CHK-API-AUDIT-001"
+    id = "CHK-M-API-006"
     name = "API Server 감사(audit) 로그 설정 검사"
     category = "ControlPlane"
     severity = "High"

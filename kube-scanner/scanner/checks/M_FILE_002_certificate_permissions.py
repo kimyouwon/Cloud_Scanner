@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback, stat, os, re
 
 class CertificateFilePermissionsCheck(Check):
-    id = "CHK-FILE-002"
+    id = "CHK-M-FILE-002"
     name = "인증서 파일 권한 설정 검사"
     category = "ControlPlane"
     severity = "Critical"

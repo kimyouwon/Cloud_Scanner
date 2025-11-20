@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback
 
 class ControllerAuthCheck(Check):
-    id = "CHK-CTRL-AUTH-001"
+    id = "CHK-M-CTRL-001"
     name = "Controller 인증 제어 (ServiceAccount credentials 사용 및 private key 설정) 검사"
     category = "ControlPlane"
     severity = "High"

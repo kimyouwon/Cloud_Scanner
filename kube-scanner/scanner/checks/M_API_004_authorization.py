@@ -1,11 +1,11 @@
-# 보안 점검 항목: API Server 취약한 방식의 인증 사용 제한
-# scanner/checks/api_server_token_auth.py
+# 보안 점검 항목: API Server 권한 제어
+# scanner/checks/api_server_authorization.py
 from .base import Check
 import subprocess, json
 
-class APIServerTokenAuthCheck(Check):
-    id = "CHK-API-002"
-    name = "API Server --token-auth-file (정적 토큰) 사용 검사"
+class APIServerAuthorizationCheck(Check):
+    id = "CHK-M-API-004"
+    name = "API Server authorization mode (AlwaysAllow) 검사"
     category = "ControlPlane"
     severity = "Critical"
     points = 6
@@ -16,8 +16,23 @@ class APIServerTokenAuthCheck(Check):
             cmd += ["--kubeconfig", kubeconfig]
         return subprocess.run(cmd, capture_output=True, text=True)
 
+    def _authorization_modes_from_args(self, args_list):
+        """
+        args_list: 리스트 형태의 command/args
+        반환: list of modes (소문자)
+        """
+        for i, a in enumerate(args_list):
+            if a.startswith("--authorization-mode="):
+                val = a.split("=", 1)[1]
+                return [m.strip().lower() for m in val.split(",") if m.strip()]
+            if a == "--authorization-mode":
+                if i + 1 < len(args_list):
+                    val = args_list[i+1]
+                    return [m.strip().lower() for m in val.split(",") if m.strip()]
+        return []
+
     def run(self, kubeconfig=''):
-        # 1) kube-system에서 apiserver 관련 파드 수집
+        # kube-system에서 kube-apiserver 파드 찾기
         res = self._kubectl(["get", "pods", "-n", "kube-system", "-o", "json"], kubeconfig)
         if res.returncode != 0:
             return [{
@@ -46,13 +61,12 @@ class APIServerTokenAuthCheck(Check):
                 apiserver_pods.append(it)
 
         if not apiserver_pods:
-            # 관리형 컨트롤플레인인지 또는 권한 부족
             return [{
                 "CheckID": self.id,
                 "Result": "WARN",
-                "Reason": "kube-system에서 kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 가능성 또는 권한 부족)",
+                "Reason": "kube-system에서 kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 수 있음 또는 권한 부족)",
                 "Evidence": {"pod_count": len(pods.get("items", []))},
-                "Remediation": "관리형 클러스터인지 확인하고, 컨트롤플레인 접근 권한이 있다면 노드의 kube-apiserver 매니페스트를 점검"
+                "Remediation": "컨트롤플레인 노드 또는 클라우드 제공자 문서에서 authorization-mode 설정 확인"
             }]
 
         findings = []
@@ -62,28 +76,39 @@ class APIServerTokenAuthCheck(Check):
             spec = p.get("spec", {}) or {}
             containers = spec.get("containers", []) or []
 
-            # args/command 합치기
             args_list = []
             for c in containers:
                 if c.get("command"):
                     args_list += c.get("command")
                 if c.get("args"):
                     args_list += c.get("args")
-            args_str = " ".join(args_list)
 
-            # 토큰 파일 검사: --token-auth-file=path 또는 --token-auth-file path 형태
-            token_flag_present = any(('--token-auth-file=' in a) for a in args_list) or ('--token-auth-file' in args_list)
+            modes = self._authorization_modes_from_args(args_list)
+            # modes가 비어있으면 kube-apiserver 기본값(AlwaysAllow 가능) 확인 권고
+            if not modes:
+                findings.append({
+                    "CheckID": self.id,
+                    "Result": "WARN",
+                    "ObjectType": "Pod",
+                    "ObjectName": name,
+                    "Namespace": "kube-system",
+                    "Reason": "--authorization-mode 플래그 없음(기본값에 따라 AlwaysAllow 일 수 있음). 명시적으로 RBAC 사용 권장",
+                    "Evidence": {"args": args_list},
+                    "Remediation": "매니페스트에 --authorization-mode=RBAC (또는 Node,RBAC 등)을 명시적으로 설정"
+                })
+                continue
 
-            if token_flag_present:
+            # AlwaysAllow 포함 여부 검사
+            if any(m == "alwaysallow" for m in modes):
                 findings.append({
                     "CheckID": self.id,
                     "Result": "FAIL",
                     "ObjectType": "Pod",
                     "ObjectName": name,
                     "Namespace": "kube-system",
-                    "Reason": "--token-auth-file 플래그가 설정되어 정적 토큰 파일 사용 중",
-                    "Evidence": {"args": args_list},
-                    "Remediation": "정적 토큰 사용을 중단하세요. 대신 인증서/OIDC/서비스어카운트 등 현대적 인증 방식을 사용하고, kube-apiserver 매니페스트에서 --token-auth-file 플래그 제거",
+                    "Reason": f"--authorization-mode contains AlwaysAllow: {modes}",
+                    "Evidence": {"authorization_modes": modes, "args": args_list},
+                    "Remediation": "매니페스트에서 AlwaysAllow 제거하고 RBAC 사용 (예: --authorization-mode=Node,RBAC 또는 --authorization-mode=RBAC)"
                 })
             else:
                 findings.append({
@@ -92,8 +117,9 @@ class APIServerTokenAuthCheck(Check):
                     "ObjectType": "Pod",
                     "ObjectName": name,
                     "Namespace": "kube-system",
-                    "Reason": "--token-auth-file 플래그 미발견(정적 토큰 사용 안함)",
-                    "Evidence": {"args": args_list},
+                    "Reason": f"--authorization-mode 설정이 적절함: {modes}",
+                    "Evidence": {"authorization_modes": modes, "args": args_list},
                     "Remediation": ""
                 })
+
         return findings

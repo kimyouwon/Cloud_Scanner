@@ -6,7 +6,7 @@ from kubernetes import client
 import traceback
 
 class NamespaceIsolationCheck(Check):
-    id = "CHK-POD-003"
+    id = "CHK-M-PSA-002"
     name = "네임스페이스 공유 금지 검사 (hostNetwork/hostPID/hostIPC)"
     category = "Pod"
     severity = "High"

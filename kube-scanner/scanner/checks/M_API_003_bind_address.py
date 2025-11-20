@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json
 
 class ControlPlaneBindAddressCheck(Check):
-    id = "CHK-API-003"
+    id = "CHK-M-API-003"
     name = "Control Plane bind-address (Scheduler / ControllerManager) 검사"
     category = "ControlPlane"
     severity = "High"

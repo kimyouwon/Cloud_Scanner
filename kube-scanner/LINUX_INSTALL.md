@@ -107,3 +107,7 @@ docker run -p 8000:8000 -v ~/.kube:/root/.kube k8s-scanner python3 main.py
 
 
 
+
+
+
+

@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback
 
 class APIServerAnonymousCheck(Check):
-    id = "CHK-API-001"
+    id = "CHK-M-API-001"
     name = "API Server 익명 접근 및 service-account-lookup 검사"
     category = "ControlPlane"
     severity = "Critical"

@@ -4,7 +4,7 @@ from .base import Check
 import subprocess, json, traceback
 
 class ControllerManagerTLSCheck(Check):
-    id = "CHK-CTRL-TLS-001"
+    id = "CHK-M-CTRL-002"
     name = "Controller Manager SSL/TLS 설정 검사"
     category = "ControlPlane"
     severity = "High"
