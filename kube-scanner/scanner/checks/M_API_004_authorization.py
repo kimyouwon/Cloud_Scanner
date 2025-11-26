@@ -9,6 +9,10 @@ class APIServerAuthorizationCheck(Check):
     category = "ControlPlane"
     severity = "Critical"
     points = 6
+    risk_level = 10
+    description = "API server가 모든 요청에 대하여 허용하도록 설정되어 있거나 필요한 권한 이상으로 사용자 또는 그룹에 부여될 경우 악의적인 사용자나 부주의한 사용자에 의해 Kubernetes에서 관리하는 다른 컨테이너의 작업에 영향을 줄 수 있다. 따라서 특정 호스트, 컨테이너 및 이미지에서 특정 작업을 수행할 수 있는 최소한의 권한만을 부여한다."
+    recommended_setting = "API server 권한이 AlwaysAllow 값으로 설정되어 있지 않은 경우\n- --authorization-mode=RBAC (또는 Node,RBAC)"
+    verification_command = "/etc/kubernetes/manifests/kube-apiserver.yaml 파일 내 AlwaysAllow 설정 확인"
 
     def _kubectl(self, args, kubeconfig=''):
         cmd = ["kubectl"] + args

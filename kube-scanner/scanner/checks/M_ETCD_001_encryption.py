@@ -13,6 +13,10 @@ class EtcdEncryptionCheck(Check):
     category = "ControlPlane"
     severity = "Critical"
     points = 6
+    risk_level = 10
+    description = "etcd는 Kubernetes와 같은 분산시스템에서 중요한 데이터를 저장할 때 사용할 수 있는 키 값 분산 저장소 역할을 하고 있다. 따라서 etcd에 저장되는 데이터는 매우 민감하므로 공개되지 않도록 저장 시 암호화되어야 한다."
+    recommended_setting = "etcd 암호화 방식이 aescbc 이상으로 설정된 경우\n- --encryption-provider-config 설정"
+    verification_command = "ps -ef | grep kube-apiserver | grep encryption-provider-config\n# encryption-provider-config 내 설정된 경로의 암호화 설정 파일 분석을 통해 안전한 암호화 방식 사용 여부 확인"
 
     # 안전한 암호화 방식 (aescbc 이상)
     SAFE_ENCRYPTION_METHODS = ["aescbc", "aesgcm", "secretbox", "kms"]

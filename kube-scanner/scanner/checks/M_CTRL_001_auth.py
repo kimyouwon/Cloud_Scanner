@@ -9,6 +9,10 @@ class ControllerAuthCheck(Check):
     category = "ControlPlane"
     severity = "High"
     points = 6
+    risk_level = 8
+    description = "Controller는 클러스터의 상태를 감시하고 현재 상태와 원하는 상태가 일치하도록 관리하는 작업을 한다. 각 컨트롤러에 대해 개별 서비스 계정 자격증명을 사용해 인가된 계정만이 클러스터를 제어할 수 있도록 설정해야한다."
+    recommended_setting = "Controller 인증 제어 설정이 적용된 경우\n- --use-service-account-credentials=true\n- --service-account-private-key-file 설정"
+    verification_command = "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-controller-manager\")) | .spec.containers[].args' | grep -E 'use-service-account-credentials|service-account-private-key-file'"
 
     REQUIRED_FLAGS = [
         "--use-service-account-credentials",

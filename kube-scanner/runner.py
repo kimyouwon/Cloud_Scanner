@@ -174,6 +174,18 @@ def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
     # 고유한 체크 결과만 사용
     unique_results_list = list(unique_results.values())
     
+    # 체크 정보를 결과에 추가 (권고 사항 포함)
+    check_info_map = {check.id: check.get_info() for check in checks}
+    for result in unique_results_list:
+        check_id = result.get("CheckID", "UNKNOWN")
+        if check_id in check_info_map:
+            info = check_info_map[check_id]
+            # 권고 정보 추가
+            result["Description"] = info.get("description", "")
+            result["RiskLevel"] = info.get("risk_level", 0)
+            result["RecommendedSetting"] = info.get("recommended_setting", "")
+            result["VerificationCommand"] = info.get("verification_command", "")
+    
     payload = {
         "ScanID": f"scan-{os.urandom(4).hex()}",
         "Timestamp": __import__("datetime").datetime.now().__str__(),
@@ -650,12 +662,35 @@ def save_html(results: Dict, output_path: str):
             </div>
 """
     
-    # FAIL 항목이 있으면 경고 메시지 추가
-    if failed > 0:
+    # FAIL 항목 상세 정보 추가
+    fail_items = [r for r in results.get("Results", []) if r.get("Result") == "FAIL"]
+    if fail_items:
         html_content += f"""
-            <div style="margin-top:20px;padding:16px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
-                <div style="font-weight:600;color:#991b1b;margin-bottom:8px;">주의! FAIL 항목 {failed}건 발견</div>
-                <div style="color:#6b7280;font-size:0.875rem;">보안 권고:</div>
+            <div style="margin-top:30px;">
+                <h2 style="color:#991b1b;font-size:1.25rem;margin-bottom:20px;">⚠️ FAIL 항목 상세 정보 ({len(fail_items)}건)</h2>
+"""
+        for result in fail_items:
+            check_id = result.get("CheckID", "UNKNOWN")
+            check_name = check_info.get(check_id, {}).get("name", check_id)
+            reason = result.get("Reason", "")
+            remediation = result.get("Remediation", "")
+            recommended_setting = result.get("RecommendedSetting", "")
+            verification_command = result.get("VerificationCommand", "")
+            description = result.get("Description", "")
+            risk_level = result.get("RiskLevel", 0)
+            
+            html_content += f"""
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">{check_id}: {check_name}</h3>
+                    {f'<div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">{risk_level}/10</span></div>' if risk_level > 0 else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>설명:</strong> {description}</div>' if description else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>문제:</strong> {reason}</div>' if reason else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{verification_command}</pre></div>' if verification_command else ''}
+                    {f'<div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{remediation}</pre></div>' if remediation else ''}
+                </div>
+"""
+        html_content += """
             </div>
 """
     

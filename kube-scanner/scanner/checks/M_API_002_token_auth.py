@@ -9,6 +9,10 @@ class APIServerTokenAuthCheck(Check):
     category = "ControlPlane"
     severity = "Critical"
     points = 6
+    risk_level = 9
+    description = "API server에서 취약한 방식의 인증을 사용할 경우, 비인가자의 접근으로 인해 Kubernetes 시스템의 모든 요소에 영향을 줄 수 있다."
+    recommended_setting = "API server 취약한 방식의 인증 사용을 제한한 경우\n- --token-auth-file 플래그 제거 (정적 토큰 파일 사용 금지)"
+    verification_command = "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-apiserver\")) | .spec.containers[].args' | grep -i token-auth-file"
 
     def _kubectl(self, args, kubeconfig=''):
         cmd = ["kubectl"] + args

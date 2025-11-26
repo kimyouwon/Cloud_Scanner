@@ -9,6 +9,10 @@ class APIServerAuditCheck(Check):
     category = "ControlPlane"
     severity = "High"
     points = 6
+    risk_level = 7
+    description = "로그 정보는 침해 사고 발생시 해킹의 흔적 및 공격기법을 확인할 수 있는 중요 자료로 정기적인 로그 분석을 통하여 시스템 침입 흔적을 확인할 수 있다."
+    recommended_setting = "API server 로그가 활성화된 경우\n- --audit-log-path\n- --audit-policy-file\n- --audit-log-maxage\n- --audit-log-maxbackup\n- --audit-log-maxsize"
+    verification_command = "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-apiserver\")) | .spec.containers[].args' | grep -E 'audit-log|audit-policy'"
 
     FLAGS = [
         "--audit-log-path",

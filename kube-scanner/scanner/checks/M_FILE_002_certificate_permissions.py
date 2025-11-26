@@ -9,6 +9,10 @@ class CertificateFilePermissionsCheck(Check):
     category = "ControlPlane"
     severity = "Critical"
     points = 6
+    risk_level = 8
+    description = "인증서와 인증서가 포함된 디렉터리의 접근 권한이 과도하게 설정될 경우, SSL 구성을 통한 네트워크상 데이터 보호 및 사용자 인증을 위해 사용되는 인증서가 비인가자에 의해 유출될 위험이 존재한다. 따라서 root 이외 다른 사용자가 접근할 수 없도록 파일의 권한을 제한해야 한다."
+    recommended_setting = "파일의 소유자 및 소유 그룹이 root이고, 인증서 파일의 접근 권한은 644, 키 파일의 접근 권한은 600 이하로 설정된 경우"
+    verification_command = "ls -al /etc/kubernetes/pki/*.crt\nls -al /etc/kubernetes/pki/*.key\nls -al /var/lib/kubernetes/ 내 pem 파일 접근 권한 확인"
 
     # 확인할 디렉터리 및 파일 패턴
     CERT_DIRECTORIES = [

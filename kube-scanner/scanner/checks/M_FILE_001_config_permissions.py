@@ -9,6 +9,10 @@ class ConfigFilePermissionsCheck(Check):
     category = "ControlPlane"
     severity = "High"
     points = 6
+    risk_level = 8
+    description = "Kubernetes 환경설정 파일의 접근 권한이 과도하게 설정된 경우, 비인가자가 다양한 방법으로 Kubernetes 설정을 변경해 침해 사고를 일으킬 가능성이 있다. 따라서 비인가자가 파일을 수정할 수 없도록 파일의 접근 권한을 제한해 파일의 무결성을 유지해야 한다."
+    recommended_setting = "환경설정 파일의 소유자 및 소유 그룹이 root이고, 접근 권한이 644 이하로 설정된 경우"
+    verification_command = "ls -al /etc/kubernetes/manifests/kube-apiserver.yaml\nls -al /etc/kubernetes/manifests/kube-controller-manager.yaml\nls -al /etc/kubernetes/manifests/kube-scheduler.yaml\nls -al /etc/kubernetes/manifests/etcd.yaml\nls -al /etc/kubernetes/admin.conf\nls -al /etc/kubernetes/scheduler.conf\nls -al /etc/kubernetes/controller-manager.conf"
 
     # 확인할 환경설정 파일 목록
     CONFIG_FILES = [

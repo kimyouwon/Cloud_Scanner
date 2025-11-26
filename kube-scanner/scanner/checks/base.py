@@ -12,6 +12,9 @@ class Check(ABC):
     severity: str = ""
     description: str = ""
     points: int = 0  # 이 체크 항목의 점수 (PASS 시 획득, FAIL/ERROR 시 0점)
+    risk_level: int = 0  # 위험도 (1-10)
+    recommended_setting: str = ""  # 권장 설정
+    verification_command: str = ""  # 실제 확인 명령어
 
     @abstractmethod
     def run(self, k8s_client=None, kubeconfig: str = '') -> List[Dict[str, Any]]:
@@ -27,7 +30,7 @@ class Check(ABC):
         """
         pass
 
-    def get_info(self) -> Dict[str, str]:
+    def get_info(self) -> Dict[str, Any]:
         """체크 정보를 반환합니다."""
         return {
             "id": self.id,
@@ -35,6 +38,9 @@ class Check(ABC):
             "category": self.category,
             "severity": self.severity,
             "description": self.description,
-            "points": self.points
+            "points": self.points,
+            "risk_level": self.risk_level,
+            "recommended_setting": self.recommended_setting,
+            "verification_command": self.verification_command
         }
 

@@ -9,6 +9,10 @@ class APIServerAnonymousCheck(Check):
     category = "ControlPlane"
     severity = "Critical"
     points = 6
+    risk_level = 10
+    description = "API Server 비인증 접근 차단이 허용될 경우, 익명 요청이 활성화되며 비인가자가 서버에 접근하여 Kubernetes 시스템 환경에 영향을 줄 수 있다."
+    recommended_setting = "API server 비인증 접근을 차단한 경우\n- --anonymous-auth=false\n- --service-account-lookup=true"
+    verification_command = "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-apiserver\")) | .spec.containers[].args'"
 
     def _kubectl(self, args, kubeconfig=''):
         cmd = ["kubectl"] + args

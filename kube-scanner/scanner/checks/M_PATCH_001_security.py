@@ -9,6 +9,10 @@ class SecurityPatchesCheck(Check):
     category = "ControlPlane"
     severity = "High"
     points = 5
+    risk_level = 8
+    description = "주기적인 패치 적용을 통하여 보안성 및 시스템 안전성을 확보하는 것이 시스템 운용의 중요한 요소이다. 서비스 중인 시스템에서 패치 적용에 따라 발생하는 서비스 영향도를 확인하고 패치 적용 시 많은 부분을 고려해야 한다."
+    recommended_setting = "최신 보안 패치가 적용되거나 보안 취약점이 존재하지 않는 버전을 사용하는 경우"
+    verification_command = "kubectl version"
 
     # 알려진 취약한 Kubernetes 버전 (예시 - 실제로는 최신 CVE 데이터베이스와 연동 필요)
     # 이는 예시이며, 실제로는 외부 CVE 데이터베이스와 연동하거나 정기적으로 업데이트 필요
