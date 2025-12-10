@@ -397,8 +397,11 @@ def save_html(results: Dict, output_path: str):
     percentage = summary.get('percentage', 0)
     passed = summary.get('passed', 0)
     failed = summary.get('failed', 0)
+    warn_count = summary.get('warn', 0)
     error_count = summary.get('error', 0)
     total = summary.get('total', 0)
+    score = summary.get('score', 0)
+    max_score = summary.get('max_score', 100)
     
     # Grade 결정 (한국어)
     if percentage == 100:
@@ -634,6 +637,11 @@ def save_html(results: Dict, output_path: str):
                         <span style="font-weight:600;color:#374151;">FAIL 항목 수:</span>
                         <span style="color:#ef4444;margin-left:8px;font-weight:600;">{failed}</span>
                     </div>
+                    {('<div style="margin-bottom:12px;"><span style="font-weight:600;color:#374151;">WARN 항목 수:</span><span style="color:#f59e0b;margin-left:8px;font-weight:600;">' + str(warn_count) + '</span></div>') if warn_count > 0 else ''}
+                    <div style="margin-bottom:12px;">
+                        <span style="font-weight:600;color:#374151;">획득 점수:</span>
+                        <span style="color:#1f2937;margin-left:8px;font-weight:600;">{int(score)}/{int(max_score)}점</span>
+                    </div>
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:20px;">
@@ -642,10 +650,10 @@ def save_html(results: Dict, output_path: str):
                     </div>
                     <div>
                         <div style="font-size:2.5rem;font-weight:700;color:#1f2937;line-height:1;">
-                            {int(summary.get('score', 0))}점
+                            {int(score)}점
                         </div>
                         <div style="font-size:0.875rem;color:#6b7280;margin-top:4px;">
-                            스캔 점수
+                            스캔 점수 ({int(max_score)}점 만점)
                         </div>
                     </div>
                 </div>
@@ -688,11 +696,20 @@ def save_html(results: Dict, output_path: str):
         else:
             target = "-"
         
-        # 점수 계산 (FAIL이면 -points, PASS면 -)
-        if status == "FAIL":
-            score_display = f"-{int(check_points)}" if check_points > 0 else "-"
+        # 점수 계산
+        if status == "PASS":
+            # PASS일 때는 0 (감점 없음)
+            score_display = "0"
+        elif status == "WARN":
+            # WARN일 때는 절반 감점
+            deducted = int(check_points * 0.5)
+            score_display = f"-{deducted}" if deducted > 0 else "0"
+        elif status == "FAIL":
+            # FAIL일 때는 전체 감점
+            score_display = f"-{int(check_points)}" if check_points > 0 else "0"
         else:
-            score_display = "-"
+            # ERROR 등
+            score_display = "0"
         
         # 결과 색상
         result_color = "#ef4444" if status == "FAIL" else "#1f2937"
