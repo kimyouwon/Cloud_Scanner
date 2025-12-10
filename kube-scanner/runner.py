@@ -143,8 +143,10 @@ def print_summary(results: List[Dict], checks: List):
         grade = "Good"
     elif score_info['percentage'] >= 60:
         grade = "Fair"
+    elif score_info['percentage'] >= 40:
+        grade = "Warning"
     else:
-        grade = "Poor - Needs Improvement"
+        grade = "Critical - Needs Immediate Improvement"
     
     print(f"Grade: {grade}", file=sys.stderr)
     print("=" * 50 + "\n", file=sys.stderr)
@@ -413,6 +415,9 @@ def save_html(results: Dict, output_path: str):
     elif percentage >= 60:
         grade = "주의"
         grade_color = "#f59e0b"  # amber
+    elif percentage >= 40:
+        grade = "경고"
+        grade_color = "#f97316"  # orange
     else:
         grade = "심각"
         grade_color = "#ef4444"  # red
