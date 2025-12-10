@@ -106,6 +106,18 @@ class EtcdEncryptionCheck(Check):
             pass
         return None
     
+    def _read_encryption_config_via_pod(self, pod_name, namespace, config_path, kubeconfig=''):
+        """파드를 통해 설정 파일 직접 읽기 시도"""
+        try:
+            # 파드 내부에서 cat 명령으로 파일 읽기
+            cmd = ["exec", pod_name, "-n", namespace, "--", "cat", config_path]
+            res = self._kubectl(cmd, kubeconfig)
+            if res.returncode == 0 and res.stdout:
+                return self._parse_encryption_config(res.stdout)
+        except Exception:
+            pass
+        return None
+    
     def _parse_encryption_config(self, config_content):
         """
         암호화 설정 파일 내용을 파싱하여 사용된 암호화 방식 확인
@@ -224,6 +236,10 @@ class EtcdEncryptionCheck(Check):
             else:
                 # 플래그가 있음 -> 설정 파일 경로 확인 및 내용 분석 시도
                 config_analysis = self._check_encryption_config_from_pod(spec, encryption_config)
+                
+                # ConfigMap/Secret으로 읽을 수 없으면 파드를 통해 직접 파일 읽기 시도
+                if not config_analysis:
+                    config_analysis = self._read_encryption_config_via_pod(pod_name, "kube-system", encryption_config, kubeconfig)
                 
                 if config_analysis:
                     if config_analysis.get("status") == "safe":
