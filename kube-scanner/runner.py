@@ -85,6 +85,7 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
     earned_points = 0
     failed_count = 0
     error_count = 0
+    warn_count = 0
     pass_count = 0
     
     # 결과별로 점수 계산
@@ -96,6 +97,10 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
         if status == "PASS":
             earned_points += points
             pass_count += 1
+        elif status == "WARN":
+            # WARN일 때는 절반 점수만 획득
+            earned_points += points * 0.5
+            warn_count += 1
         elif status == "FAIL":
             failed_count += 1
         elif status == "ERROR":
@@ -109,6 +114,7 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
         "percentage": round(percentage, 1),
         "passed": pass_count,
         "failed": failed_count,
+        "warn": warn_count,
         "error": error_count,
         "total": len(checks)
     }
@@ -123,7 +129,9 @@ def print_summary(results: List[Dict], checks: List):
     print(f"Total Checks: {score_info['total']}", file=sys.stderr)
     print(f"Passed: {score_info['passed']}", file=sys.stderr)
     print(f"Failed: {score_info['failed']}", file=sys.stderr)
-    if score_info['error'] > 0:
+    if score_info.get('warn', 0) > 0:
+        print(f"Warnings: {score_info['warn']}", file=sys.stderr)
+    if score_info.get('error', 0) > 0:
         print(f"Errors: {score_info['error']}", file=sys.stderr)
     print("-" * 50, file=sys.stderr)
     print(f"Security Score: {score_info['score']}/{score_info['max_score']} ({score_info['percentage']}%)", file=sys.stderr)
