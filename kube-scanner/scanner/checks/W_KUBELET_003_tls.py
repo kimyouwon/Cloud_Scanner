@@ -8,7 +8,7 @@ class KubeletTLSCheck(Check):
     name = "Kubelet SSL/TLS 적용 검사"
     category = "Worker"
     severity = "High"
-    points = 5
+    points = 4
     risk_level = 7
     description = "API server, node 간 통신 시 민감한 데이터들이 평문으로 전송되면 스니핑과 같은 방법으로 민감한 데이터가 노출되므로 SSL/TLS 통신을 적용하여 송수신되는 데이터들을 보호하고 접근하는 대상에 대해 인증해야 한다. SSL/TLS 통신 적용 시 주기적으로 인증서를 변경하고 안전한 cipher suite를 사용해야 한다."
     recommended_setting = "kubelet SSL/TLS 통신을 위한 설정(인증서, 비밀키, 인증서 교환 주기, TLS 버전, cipher suites, hostname 변경 설정 비활성화)이 적용된 경우"

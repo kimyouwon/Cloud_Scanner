@@ -8,16 +8,18 @@ class CertificateFilePermissionsCheck(Check):
     name = "인증서 파일 권한 설정 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 6
+    points = 5
     risk_level = 8
     description = "인증서와 인증서가 포함된 디렉터리의 접근 권한이 과도하게 설정될 경우, SSL 구성을 통한 네트워크상 데이터 보호 및 사용자 인증을 위해 사용되는 인증서가 비인가자에 의해 유출될 위험이 존재한다. 따라서 root 이외 다른 사용자가 접근할 수 없도록 파일의 권한을 제한해야 한다."
     recommended_setting = "파일의 소유자 및 소유 그룹이 root이고, 인증서 파일의 접근 권한은 644, 키 파일의 접근 권한은 600 이하로 설정된 경우"
     verification_command = "ls -al /etc/kubernetes/pki/*.crt\nls -al /etc/kubernetes/pki/*.key\nls -al /var/lib/kubernetes/ 내 pem 파일 접근 권한 확인"
 
-    # 확인할 디렉터리 및 파일 패턴
+    # 확인할 디렉터리 및 파일 패턴 (minikube 경로 포함)
     CERT_DIRECTORIES = [
         "/etc/kubernetes/pki",
-        "/var/lib/kubernetes"
+        "/var/lib/kubernetes",
+        # minikube 경로
+        "/var/lib/minikube/certs"
     ]
     
     # 인증서 파일 확장자 (644 이하)
@@ -240,13 +242,24 @@ class CertificateFilePermissionsCheck(Check):
                                     all_files.append(file_path)
             
             if not all_files:
+                # minikube 환경 확인
+                minikube_note = ""
+                try:
+                    nodes_res = self._kubectl(["get", "nodes", "-o", "json"], kubeconfig)
+                    if nodes_res.returncode == 0:
+                        nodes = json.loads(nodes_res.stdout)
+                        if any("minikube" in str(node.get("metadata", {}).get("name", "")).lower() for node in nodes.get("items", [])):
+                            minikube_note = "\n\n참고: minikube 환경에서는 인증서 파일 경로가 다를 수 있습니다. minikube는 VM 내부에서 실행되므로 직접 접근이 필요할 수 있습니다."
+                except:
+                    pass
+                
                 findings.append({
                     "CheckID": self.id,
                     "Result": "WARN",
                     "ObjectType": "Directory",
                     "ObjectName": "Certificate Directories",
                     "Namespace": "N/A",
-                    "Reason": "인증서 및 키 파일을 찾을 수 없음",
+                    "Reason": "인증서 및 키 파일을 찾을 수 없음" + minikube_note,
                     "Evidence": {"directories": self.CERT_DIRECTORIES},
                     "Remediation": (
                         "컨트롤플레인 노드에 직접 접근하여 다음 디렉터리에서 인증서 및 키 파일을 확인하세요:\n" +

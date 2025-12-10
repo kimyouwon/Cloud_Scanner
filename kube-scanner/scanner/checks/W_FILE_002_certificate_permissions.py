@@ -8,16 +8,18 @@ class WorkerCertificateFilePermissionsCheck(Check):
     name = "Worker 노드 인증서 파일 권한 설정 검사"
     category = "Worker"
     severity = "High"
-    points = 5
+    points = 4
     risk_level = 8
     description = "SSL/TLS 통신 시 사용자 인증을 위해 사용되는 인증서가 root 외 다른 사용자가 인증서 파일에 접근할 수 없도록 인증서 파일의 권한을 제한하여 인증서가 변조되지 않도록 해야 한다."
     recommended_setting = "인증서 파일의 소유자 및 소유 그룹이 root이고, 접근 권한이 644 이하로 설정된 경우"
     verification_command = "$ ls -al [인증서를 생성한 위치]"
 
-    # Worker 노드의 kubelet 인증서 디렉터리
+    # Worker 노드의 kubelet 인증서 디렉터리 (minikube 경로 포함)
     CERT_DIRECTORIES = [
         "/var/lib/kubelet/pki",
-        "/etc/kubernetes/pki"
+        "/etc/kubernetes/pki",
+        # minikube 경로
+        "/var/lib/minikube/certs"
     ]
     
     # 인증서 파일 확장자 (644 이하)
@@ -257,4 +259,7 @@ class WorkerCertificateFilePermissionsCheck(Check):
             }]
         
         return findings
+
+
+
 

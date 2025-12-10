@@ -8,17 +8,19 @@ class WorkerConfigFilePermissionsCheck(Check):
     name = "Worker 노드 환경설정 파일 권한 설정 검사"
     category = "Worker"
     severity = "High"
-    points = 5
+    points = 4
     risk_level = 8
     description = "Kubernetes 설정 파일에 비인가자의 접근이 가능한 경우 Kubernetes 설정을 변경하여 침해 사고를 일으킬 가능성이 있다. 따라서 root 외 다른 사용자가 이 파일을 수정할 수 없도록 파일의 권한을 제한해야 한다."
     recommended_setting = "환경설정 파일의 소유자 및 소유 그룹이 root이고, 접근 권한이 644 이하로 설정된 경우"
     verification_command = "$ stat -c %a:%U:%G /etc/kubernetes/kubelet.conf\n$ stat -c %a:%U:%G /usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf\n$ stat -c %a:%U:%G /var/lib/kubelet/config.yaml"
 
-    # Worker 노드의 kubelet 설정 파일
+    # Worker 노드의 kubelet 설정 파일 (minikube 경로 포함)
     CONFIG_FILES = [
         "/etc/kubernetes/kubelet.conf",
         "/usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf",
-        "/var/lib/kubelet/config.yaml"
+        "/var/lib/kubelet/config.yaml",
+        # minikube 경로
+        "/var/lib/minikube/kubelet.conf"
     ]
 
     def _kubectl(self, args, kubeconfig=''):
@@ -239,4 +241,7 @@ class WorkerConfigFilePermissionsCheck(Check):
             }]
         
         return findings
+
+
+
 

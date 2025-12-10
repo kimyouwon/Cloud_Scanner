@@ -8,7 +8,7 @@ class PrivilegedCheck(Check):
     name = "Container privileged 검사"
     category = "Pod"
     severity = "High"
-    points = 5
+    points = 4
     risk_level = 9
     description = "PodSecurityAdmission(이하 PSA)는 클러스터 및 네임스페이스 수준의 리소스로, 파드에 대해 서로 다른 격리 수준을 정의한다. PodSecurityStandard(이하 PSS)를 적용하기 위해 내장된 PSA Controller를 통해 수행된다. PSS 수준에 맞지 않은 Pod를 생성할 경우 설정된 PSS 수준에 따라 내장된 PSA Controller가 유효성을 검사한다. 따라서, 파드 내 컨테이너가 불필요한 권한을 가지지 않도록 PSA를 통해 PSS를 적용하여 운용해야 한다."
     recommended_setting = "PodSecurityAdmission 정책을 통해 컨테이너 권한을 제어한 경우\n- allowPrivilegeEscalation=false\n- runAsUser 설정\n- runAsNonRoot=true\n- capabilities.drop=ALL\n- seccompProfile 적용"

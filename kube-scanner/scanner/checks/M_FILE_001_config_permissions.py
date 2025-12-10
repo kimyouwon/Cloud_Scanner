@@ -8,13 +8,13 @@ class ConfigFilePermissionsCheck(Check):
     name = "환경설정 파일 권한 설정 검사"
     category = "ControlPlane"
     severity = "High"
-    points = 6
+    points = 4
     risk_level = 8
     description = "Kubernetes 환경설정 파일의 접근 권한이 과도하게 설정된 경우, 비인가자가 다양한 방법으로 Kubernetes 설정을 변경해 침해 사고를 일으킬 가능성이 있다. 따라서 비인가자가 파일을 수정할 수 없도록 파일의 접근 권한을 제한해 파일의 무결성을 유지해야 한다."
     recommended_setting = "환경설정 파일의 소유자 및 소유 그룹이 root이고, 접근 권한이 644 이하로 설정된 경우"
     verification_command = "ls -al /etc/kubernetes/manifests/kube-apiserver.yaml\nls -al /etc/kubernetes/manifests/kube-controller-manager.yaml\nls -al /etc/kubernetes/manifests/kube-scheduler.yaml\nls -al /etc/kubernetes/manifests/etcd.yaml\nls -al /etc/kubernetes/admin.conf\nls -al /etc/kubernetes/scheduler.conf\nls -al /etc/kubernetes/controller-manager.conf"
 
-    # 확인할 환경설정 파일 목록
+    # 확인할 환경설정 파일 목록 (minikube 경로 포함)
     CONFIG_FILES = [
         "/etc/kubernetes/manifests/kube-apiserver.yaml",
         "/etc/kubernetes/manifests/kube-controller-manager.yaml",
@@ -22,7 +22,11 @@ class ConfigFilePermissionsCheck(Check):
         "/etc/kubernetes/manifests/etcd.yaml",
         "/etc/kubernetes/admin.conf",
         "/etc/kubernetes/scheduler.conf",
-        "/etc/kubernetes/controller-manager.conf"
+        "/etc/kubernetes/controller-manager.conf",
+        # minikube 경로
+        "/var/lib/minikube/certs/admin.conf",
+        "/var/lib/minikube/certs/scheduler.conf",
+        "/var/lib/minikube/certs/controller-manager.conf"
     ]
 
     def _kubectl(self, args, kubeconfig=''):
@@ -251,13 +255,24 @@ class ConfigFilePermissionsCheck(Check):
                     })
             
             if missing_files:
+                # minikube 환경일 가능성 고려
+                minikube_note = ""
+                try:
+                    nodes_res = self._kubectl(["get", "nodes", "-o", "json"], kubeconfig)
+                    if nodes_res.returncode == 0:
+                        nodes = json.loads(nodes_res.stdout)
+                        if any("minikube" in str(node.get("metadata", {}).get("name", "")).lower() for node in nodes.get("items", [])):
+                            minikube_note = "\n\n참고: minikube 환경에서는 static pod manifest 파일이 없을 수 있습니다. minikube는 파드로 컨트롤플레인을 실행하므로 이 체크는 건너뛸 수 있습니다."
+                except:
+                    pass
+                
                 findings.append({
                     "CheckID": self.id,
                     "Result": "WARN",
                     "ObjectType": "File",
                     "ObjectName": "Multiple",
                     "Namespace": "N/A",
-                    "Reason": f"다음 파일들을 확인할 수 없음: {', '.join(missing_files)}",
+                    "Reason": f"다음 파일들을 확인할 수 없음: {', '.join(missing_files)}{minikube_note}",
                     "Evidence": {"missing_files": missing_files},
                     "Remediation": (
                         "컨트롤플레인 노드에 직접 접근하여 다음 파일들의 권한을 확인하세요:\n" +

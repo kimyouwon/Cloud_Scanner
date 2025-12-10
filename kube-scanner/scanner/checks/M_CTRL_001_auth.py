@@ -8,7 +8,7 @@ class ControllerAuthCheck(Check):
     name = "Controller 인증 제어 (ServiceAccount credentials 사용 및 private key 설정) 검사"
     category = "ControlPlane"
     severity = "High"
-    points = 6
+    points = 4
     risk_level = 8
     description = "Controller는 클러스터의 상태를 감시하고 현재 상태와 원하는 상태가 일치하도록 관리하는 작업을 한다. 각 컨트롤러에 대해 개별 서비스 계정 자격증명을 사용해 인가된 계정만이 클러스터를 제어할 수 있도록 설정해야한다."
     recommended_setting = "Controller 인증 제어 설정이 적용된 경우\n- --use-service-account-credentials=true\n- --service-account-private-key-file 설정"

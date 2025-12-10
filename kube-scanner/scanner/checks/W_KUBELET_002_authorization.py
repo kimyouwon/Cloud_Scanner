@@ -8,7 +8,7 @@ class KubeletAuthorizationCheck(Check):
     name = "Kubelet 권한 제어 검사"
     category = "Worker"
     severity = "High"
-    points = 5
+    points = 4
     risk_level = 8
     description = "Kubelet은 기본적으로 API server 요청을 권한 인증 없이 모두 허용하고 있어 설정 변경을 통해 권한 인증 후 API server 요청을 처리하도록 해야 한다."
     recommended_setting = "API server 권한이 AlwaysAllow 값으로 설정되지 않은 경우\n- --authorization-mode=Webhook 또는 --authorization-mode=AlwaysDeny"
@@ -236,4 +236,7 @@ class KubeletAuthorizationCheck(Check):
             }]
         
         return findings
+
+
+
 

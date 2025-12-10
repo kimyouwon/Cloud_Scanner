@@ -8,7 +8,7 @@ class KubeletAuthCheck(Check):
     name = "Kubelet 인증 제어 검사"
     category = "Worker"
     severity = "Critical"
-    points = 6
+    points = 5
     risk_level = 9
     description = "Kubelet은 각 노드에서 실행되는 에이전트로 Pod에 대해 정의된 PodSpec(yaml 또는 Json 형태)에 따라 컨테이너를 실행하고 동작하도록 관리하는 역할을 한다. 따라서 Kubelet의 비인증 접근은 Pod와 컨테이너의 정보 노출, 리소스 수정 등에 대해 영향을 줄 수 있으므로 Kubelet 인증 후 접근할 수 있도록 해야 한다."
     recommended_setting = "비인증 접근이 차단된 경우\n- --anonymous-auth=false\n- --read-only-port=0 또는 미설정"
@@ -258,4 +258,7 @@ class KubeletAuthCheck(Check):
             }]
         
         return findings
+
+
+
 

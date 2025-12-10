@@ -8,7 +8,7 @@ class KubeletKernelCheck(Check):
     name = "Kernel 파라미터 설정 검사"
     category = "Worker"
     severity = "Medium"
-    points = 4
+    points = 7
     risk_level = 6
     description = "OS kernel 매개 변수값과 kubelet에 설정된 기본 kernel 매개 변수값이 다를 경우 kubelet 기본 kernel 매개 변수값이 변경되어 원하지 않는 커널 기능이 존재하는 Pod가 실행될 수 있으므로 각각의 변수값이 다를 경우 kubelet 기본 kernel 매개 변수값이 변경되지 않도록 보호해야 한다."
     recommended_setting = "Kubelet Default Kernel 값을 보호하는 경우\n- --protect-kernel-defaults=true"
@@ -225,4 +225,7 @@ class KubeletKernelCheck(Check):
             }]
         
         return findings
+
+
+
 
