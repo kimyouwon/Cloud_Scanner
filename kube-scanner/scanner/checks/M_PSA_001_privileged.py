@@ -20,6 +20,11 @@ class PrivilegedCheck(Check):
             v1 = k8s_client.CoreV1Api()
             pods = v1.list_pod_for_all_namespaces(watch=False)
             for p in pods.items:
+                # kube-proxy는 예외 처리 (시스템 컴포넌트이므로 privileged 모드가 정상)
+                pod_name = p.metadata.name
+                if "kube-proxy" in pod_name:
+                    continue
+                
                 for c in (p.spec.containers or []):
                     sc = c.security_context
                     if sc and getattr(sc, "privileged", False):

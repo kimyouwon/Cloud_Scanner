@@ -29,6 +29,17 @@ class NamespaceIsolationCheck(Check):
                 pod_name = p.metadata.name
                 namespace = p.metadata.namespace
                 
+                # 시스템 컴포넌트 파드 예외 처리
+                if namespace == "kube-system":
+                    # etcd-*, kube-apiserver-*, kube-controller-manager-*, kube-scheduler-*, kube-proxy-*, storage-provisioner
+                    if (pod_name.startswith("etcd-") or 
+                        pod_name.startswith("kube-apiserver-") or 
+                        pod_name.startswith("kube-controller-manager-") or 
+                        pod_name.startswith("kube-scheduler-") or 
+                        pod_name.startswith("kube-proxy-") or 
+                        pod_name == "storage-provisioner"):
+                        continue
+                
                 violations = []
                 evidence = {
                     "pod": pod_name,
