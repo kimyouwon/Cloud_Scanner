@@ -340,6 +340,25 @@ def save_markdown(results: Dict, output_path: str):
                 if remediation:
                     f.write(f"**Remediation**: {remediation}\n\n")
 
+def get_category_display_name(check_id: str) -> str:
+    """Check ID를 기반으로 카테고리 표시 이름 반환"""
+    if check_id.startswith("CHK-M-API-"):
+        return "API Server"
+    elif check_id.startswith("CHK-M-ETCD-"):
+        return "etcd"
+    elif check_id.startswith("CHK-M-CTRL-"):
+        return "Controller Manager"
+    elif check_id.startswith("CHK-M-FILE-"):
+        return "File"
+    elif check_id.startswith("CHK-M-PSA-"):
+        return "Pod Security"
+    elif check_id.startswith("CHK-W-KUBELET-"):
+        return "Kubelet"
+    elif check_id.startswith("CHK-W-FILE-"):
+        return "File"
+    else:
+        return "N/A"
+
 def save_html(results: Dict, output_path: str):
     """HTML 형식으로 저장합니다."""
     # 체크 목록 로드하여 이름과 점수 정보 가져오기
@@ -646,7 +665,7 @@ def save_html(results: Dict, output_path: str):
         # 체크 이름 및 카테고리 가져오기
         check_name = check_info.get(check_id, {}).get("name", check_id)
         check_points = check_info.get(check_id, {}).get("points", 0)
-        check_category = result.get("Category", check_info.get(check_id, {}).get("category", "N/A"))
+        check_category = get_category_display_name(check_id)
         
         # 대상 정보 구성
         if namespace and namespace != "N/A" and obj_name:

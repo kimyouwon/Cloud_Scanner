@@ -21,20 +21,22 @@ class NamespaceIsolationCheck(Check):
         try:
             v1 = k8s_client.CoreV1Api()
             
-            # Control plane 컴포넌트는 호스트 네임스페이스 공유가 필요하므로 제외
-            # - etcd: etcd 데이터 저장소, 호스트 네트워크/파일시스템 접근 필요
-            # - kube-apiserver: API 서버, 호스트 네트워크 접근 필요
-            # - kube-controller-manager: 컨트롤러 매니저, 호스트 네트워크 접근 필요
-            # - kube-scheduler: 스케줄러, 호스트 네트워크 접근 필요
-            # - kube-proxy: 네트워크 프록시, 호스트 네트워크 접근 필요
+            # Control plane 및 시스템 컴포넌트는 호스트 네임스페이스 공유가 필요하므로 제외
+            # - kube-apiserver-*: API 서버, 호스트 네트워크 접근 필요
+            # - kube-controller-manager-*: 컨트롤러 매니저, 호스트 네트워크 접근 필요
+            # - kube-scheduler-*: 스케줄러, 호스트 네트워크 접근 필요
+            # - etcd-*: etcd 데이터 저장소, 호스트 네트워크/파일시스템 접근 필요
+            # - kube-proxy-*: 네트워크 프록시, 호스트 네트워크 접근 필요
             # - storage-provisioner: 스토리지 프로비저너, 호스트 파일시스템 접근 필요
-            EXCLUDED_POD_PATTERNS = [
-                "etcd",
-                "kube-apiserver",
-                "kube-controller-manager",
-                "kube-scheduler",
-                "kube-proxy",
-                "storage-provisioner"
+            # - coredns-*: CoreDNS, 호스트 네트워크 접근 필요
+            EXCLUDED_POD_PREFIXES = [
+                "kube-apiserver-",
+                "kube-controller-manager-",
+                "kube-scheduler-",
+                "etcd-",
+                "kube-proxy-",
+                "storage-provisioner",
+                "coredns-"
             ]
             
             # 1) 모든 파드에서 hostNetwork, hostPID, hostIPC 사용 확인
@@ -45,8 +47,8 @@ class NamespaceIsolationCheck(Check):
                 pod_name = p.metadata.name
                 namespace = p.metadata.namespace
                 
-                # Control plane 컴포넌트 제외
-                is_excluded = any(pattern in pod_name for pattern in EXCLUDED_POD_PATTERNS)
+                # Control plane 및 시스템 컴포넌트 제외 (prefix 기반)
+                is_excluded = any(pod_name.startswith(prefix) for prefix in EXCLUDED_POD_PREFIXES)
                 if is_excluded:
                     continue
                 
