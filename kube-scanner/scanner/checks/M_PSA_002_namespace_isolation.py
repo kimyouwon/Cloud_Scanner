@@ -117,6 +117,11 @@ class NamespaceIsolationCheck(Check):
             
             for ns in namespaces.items:
                 ns_name = ns.metadata.name
+                
+                # 시스템 네임스페이스는 PSA 검사에서 제외
+                if ns_name in SYSTEM_NAMESPACES:
+                    continue
+                
                 labels = ns.metadata.labels or {}
                 
                 # PSA 레이블 확인
