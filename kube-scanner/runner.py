@@ -59,6 +59,7 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
     failed_count = 0
     error_count = 0
     pass_count = 0
+    warn_count = 0
     
     # 결과별로 점수 계산
     for result in results:
@@ -69,6 +70,9 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
         if status == "PASS":
             earned_points += points
             pass_count += 1
+        elif status == "WARN":
+            earned_points += points * 0.5  # WARN은 50% 점수
+            warn_count += 1
         elif status == "FAIL":
             failed_count += 1
         elif status == "ERROR":
@@ -82,6 +86,7 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
         "percentage": round(percentage, 1),
         "passed": pass_count,
         "failed": failed_count,
+        "warn": warn_count,
         "error": error_count,
         "total": len(checks)
     }
@@ -349,8 +354,11 @@ def save_html(results: Dict, output_path: str):
     percentage = summary.get('percentage', 0)
     passed = summary.get('passed', 0)
     failed = summary.get('failed', 0)
+    warn_count = summary.get('warn', 0)
     error_count = summary.get('error', 0)
     total = summary.get('total', 0)
+    score = summary.get('score', 0)
+    max_score = summary.get('max_score', 0)
     
     # Grade 결정 (한국어)
     if percentage == 100:
@@ -586,6 +594,14 @@ def save_html(results: Dict, output_path: str):
                         <span style="font-weight:600;color:#374151;">FAIL 항목 수:</span>
                         <span style="color:#ef4444;margin-left:8px;font-weight:600;">{failed}</span>
                     </div>
+                    <div style="margin-bottom:12px;">
+                        <span style="font-weight:600;color:#374151;">WARN 항목 수:</span>
+                        <span style="color:#f59e0b;margin-left:8px;font-weight:600;">{warn_count}</span>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <span style="font-weight:600;color:#374151;">획득 점수:</span>
+                        <span style="color:#1f2937;margin-left:8px;font-weight:600;">{int(score)}/{int(max_score)}점</span>
+                    </div>
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:20px;">
@@ -638,8 +654,13 @@ def save_html(results: Dict, output_path: str):
         else:
             target = "-"
         
-        # 점수 계산 (FAIL이면 -points, PASS면 -)
-        if status == "FAIL":
+        # 점수 계산 (PASS=0, WARN=-50%, FAIL=-100%)
+        if status == "PASS":
+            score_display = "0"
+        elif status == "WARN":
+            deducted = int(check_points * 0.5)
+            score_display = f"-{deducted}" if deducted > 0 else "0"
+        elif status == "FAIL":
             score_display = f"-{int(check_points)}" if check_points > 0 else "-"
         else:
             score_display = "-"
@@ -683,6 +704,38 @@ def save_html(results: Dict, output_path: str):
                 <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
                     <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">{check_id}: {check_name}</h3>
                     {f'<div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">{risk_level}/10</span></div>' if risk_level > 0 else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>설명:</strong> {description}</div>' if description else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>문제:</strong> {reason}</div>' if reason else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{verification_command}</pre></div>' if verification_command else ''}
+                    {f'<div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{remediation}</pre></div>' if remediation else ''}
+                </div>
+"""
+        html_content += """
+            </div>
+"""
+    
+    # WARN 항목 상세 정보 추가
+    warn_items = [r for r in results.get("Results", []) if r.get("Result") == "WARN"]
+    if warn_items:
+        html_content += f"""
+            <div style="margin-top:30px;">
+                <h2 style="color:#92400e;font-size:1.25rem;margin-bottom:20px;">⚠️ WARN 항목 상세 정보 ({len(warn_items)}건)</h2>
+"""
+        for result in warn_items:
+            check_id = result.get("CheckID", "UNKNOWN")
+            check_name = check_info.get(check_id, {}).get("name", check_id)
+            reason = result.get("Reason", "")
+            remediation = result.get("Remediation", "")
+            recommended_setting = result.get("RecommendedSetting", "")
+            verification_command = result.get("VerificationCommand", "")
+            description = result.get("Description", "")
+            risk_level = result.get("RiskLevel", 0)
+            
+            html_content += f"""
+                <div style="margin-bottom:24px;padding:20px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:4px;">
+                    <h3 style="color:#92400e;font-size:1.1rem;margin-bottom:12px;">{check_id}: {check_name}</h3>
+                    {f'<div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#d97706;">{risk_level}/10</span></div>' if risk_level > 0 else ''}
                     {f'<div style="margin-bottom:8px;"><strong>설명:</strong> {description}</div>' if description else ''}
                     {f'<div style="margin-bottom:8px;"><strong>문제:</strong> {reason}</div>' if reason else ''}
                     {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
