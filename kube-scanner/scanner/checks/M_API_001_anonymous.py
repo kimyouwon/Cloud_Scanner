@@ -8,7 +8,7 @@ class APIServerAnonymousCheck(Check):
     name = "API Server 익명 접근 및 service-account-lookup 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 7
+    points = 8
     risk_level = 10
     description = "API Server 비인증 접근 차단이 허용될 경우, 익명 요청이 활성화되며 비인가자가 서버에 접근하여 Kubernetes 시스템 환경에 영향을 줄 수 있다."
     recommended_setting = "API server 비인증 접근을 차단한 경우\n- --anonymous-auth=false\n- --service-account-lookup=true"
