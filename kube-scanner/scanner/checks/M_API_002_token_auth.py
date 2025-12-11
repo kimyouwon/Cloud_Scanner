@@ -8,7 +8,7 @@ class APIServerTokenAuthCheck(Check):
     name = "API Server --token-auth-file (정적 토큰) 사용 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 8
+    points = 7
     risk_level = 9
     description = "API server에서 취약한 방식의 인증을 사용할 경우, 비인가자의 접근으로 인해 Kubernetes 시스템의 모든 요소에 영향을 줄 수 있다."
     recommended_setting = "API server 취약한 방식의 인증 사용을 제한한 경우\n- --token-auth-file 플래그 제거 (정적 토큰 파일 사용 금지)"

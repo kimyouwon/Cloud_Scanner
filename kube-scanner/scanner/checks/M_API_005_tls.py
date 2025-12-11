@@ -8,7 +8,7 @@ class APIServerTLSCheck(Check):
     name = "API Server SSL/TLS 설정 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 8
+    points = 7
     risk_level = 9
     description = "SSL/TLS 통신 적용을 통해 네트워크 스니핑과 같은 공격으로 주요 정보가 노출되지 않도록 안전한 통신을 해야 하며, API server에 접근하는 대상에 대해 검증할 수 있도록 설정해야 한다. 또한 SSL/TLS 통신 적용 시에는 주기적으로 인증서를 변경하고 안전한 버전의 암호화 방식을 사용하는 방법을 통해 위험을 최소화할 수 있는 정책 설정이 필요하다."
     recommended_setting = "API server SSL/TLS가 적용된 경우\n- --secure-port 설정\n- --kubelet-certificate-authority\n- --kubelet-client-certificate\n- --kubelet-client-key\n- --tls-cert-file\n- --tls-private-key-file\n- --client-ca-file\n- --tls-cipher-suites"

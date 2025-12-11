@@ -10,7 +10,7 @@ class NamespaceIsolationCheck(Check):
     name = "네임스페이스 공유 금지 검사 (hostNetwork/hostPID/hostIPC)"
     category = "Pod"
     severity = "High"
-    points = 7
+    points = 6
     risk_level = 9
     description = "파드의 컨테이너는 일반적으로 별도의 리눅스 네임스페이스에서 실행되므로 프로세스가 다른 컨테이너 또는 노드의 기본 네임스페이스에서 실행 중인 프로세스와 분리된다. 파드의 스펙에서 hostNetwork 옵션을 true로 설정하여 가상 네트워크 어댑터 대신 노드의 실제 네트워크 어댑터를 사용할 수 있으며 그 결과 해당 파드는 노드의 인터페이스를 사용하게 된다. 또한, hostNetwork 옵션과 유사한 파드 스펙 속성으로 hostPID와 hostIPC가 있다. 이를 true로 설정하면 파드의 컨테이너는 노드의 PID와 IPC 네임스페이스를 사용해 컨테이너에서 실행 중인 프로세스가 노드의 다른 프로세스를 보거나 IPC로 이들과 통신할 수 있다. 따라서, PSA(Pod Security Admission) 설정을 통해 호스트 IPC, PID, 네트워크 네임스페이스 사용을 방지하여 불필요한 권한을 제거해야 한다."
     recommended_setting = "네임스페이스 공유 금지 설정이 적용된 경우\n- hostNetwork=false\n- hostPID=false\n- hostIPC=false"
