@@ -39,6 +39,16 @@ class NamespaceIsolationCheck(Check):
                 "coredns-"
             ]
             
+            # Kubernetes 시스템 네임스페이스 목록 (PSA 검사에서 제외)
+            # - kube-system: Kubernetes 시스템 컴포넌트
+            # - kube-public: 공개 리소스 (일반적으로 비어있음)
+            # - kube-node-lease: 노드 리스 오브젝트 (시스템 관리용)
+            SYSTEM_NAMESPACES = [
+                "kube-system",
+                "kube-public",
+                "kube-node-lease"
+            ]
+            
             # 1) 모든 파드에서 hostNetwork, hostPID, hostIPC 사용 확인
             pods = v1.list_pod_for_all_namespaces(watch=False)
             
@@ -47,8 +57,8 @@ class NamespaceIsolationCheck(Check):
                 pod_name = p.metadata.name
                 namespace = p.metadata.namespace
                 
-                # kube-system 네임스페이스는 기본 제외 (시스템 파드)
-                if namespace == "kube-system":
+                # 시스템 네임스페이스는 기본 제외 (시스템 파드)
+                if namespace in SYSTEM_NAMESPACES:
                     continue
                 
                 # 시스템 파드 prefix 기반 예외 처리
