@@ -47,10 +47,16 @@ class NamespaceIsolationCheck(Check):
                 pod_name = p.metadata.name
                 namespace = p.metadata.namespace
                 
-                # Control plane 및 시스템 컴포넌트 제외 (prefix 기반)
+                # kube-system 네임스페이스는 기본 제외 (시스템 파드)
+                if namespace == "kube-system":
+                    continue
+                
+                # 시스템 파드 prefix 기반 예외 처리
                 is_excluded = any(pod_name.startswith(prefix) for prefix in EXCLUDED_POD_PREFIXES)
                 if is_excluded:
                     continue
+                
+                # 워크로드 파드만 검사 (hostNetwork/hostPID/hostIPC 사용 시 FAIL)
                 
                 violations = []
                 evidence = {
