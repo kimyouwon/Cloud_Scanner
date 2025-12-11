@@ -19,7 +19,11 @@ class APIServerTLSCheck(Check):
         "--kubelet-certificate-authority",
         "--kubelet-client-certificate",
         "--kubelet-client-key",
-        "--kubelet-account-key-file",
+        # --kubelet-account-key-file 제외: 
+        # 이 플래그는 Kubernetes 버전에 따라 사용되지 않을 수 있으며,
+        # ServiceAccount 토큰 서명에 사용되지만 TLS 통신 보안과는 직접적인 관련이 없습니다.
+        # 또한 최신 Kubernetes 버전에서는 ServiceAccount 토큰 발급 방식이 변경되어
+        # 이 플래그가 더 이상 필요하지 않을 수 있습니다.
         "--tls-cert-file",
         "--tls-private-key-file",
         "--client-ca-file",
