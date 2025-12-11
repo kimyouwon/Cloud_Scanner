@@ -729,7 +729,7 @@ def save_html(results: Dict, output_path: str):
                     <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">{check_id}: {check_name}</h3>
                     {f'<div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">{risk_level}/10</span></div>' if risk_level > 0 else ''}
                     {f'<div style="margin-bottom:8px;"><strong>설명:</strong> {description}</div>' if description else ''}
-                    {f'<div style="margin-bottom:8px;"><strong>문제:</strong> {reason}</div>' if reason else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">{reason}</span></div>' if reason else ''}
                     {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
                     {f'<div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{verification_command}</pre></div>' if verification_command else ''}
                     {f'<div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{remediation}</pre></div>' if remediation else ''}
@@ -761,7 +761,7 @@ def save_html(results: Dict, output_path: str):
                     <h3 style="color:#92400e;font-size:1.1rem;margin-bottom:12px;">{check_id}: {check_name}</h3>
                     {f'<div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#d97706;">{risk_level}/10</span></div>' if risk_level > 0 else ''}
                     {f'<div style="margin-bottom:8px;"><strong>설명:</strong> {description}</div>' if description else ''}
-                    {f'<div style="margin-bottom:8px;"><strong>문제:</strong> {reason}</div>' if reason else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#d97706;">{reason}</span></div>' if reason else ''}
                     {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
                     {f'<div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{verification_command}</pre></div>' if verification_command else ''}
                     {f'<div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{remediation}</pre></div>' if remediation else ''}

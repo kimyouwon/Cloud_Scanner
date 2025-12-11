@@ -157,6 +157,16 @@ class ConfigFilePermissionsCheck(Check):
         else:
             return {"valid": True, "reason": "권한 설정이 적절함"}
 
+    def _is_kubeadm_environment(self, pod_name, namespace, kubeconfig=''):
+        """kubeadm 환경인지 확인 (/etc/kubernetes/manifests/ 디렉터리 존재 여부)"""
+        try:
+            # kubeadm은 /etc/kubernetes/manifests/ 디렉터리에 static pod 매니페스트를 저장
+            cmd = ["exec", pod_name, "-n", namespace, "--", "test", "-d", "/etc/kubernetes/manifests"]
+            res = self._kubectl(cmd, kubeconfig)
+            return res.returncode == 0
+        except Exception:
+            return False
+
     def run(self, kubeconfig=''):
         findings = []
         
@@ -181,6 +191,27 @@ class ConfigFilePermissionsCheck(Check):
                 # 컨트롤플레인 컴포넌트 파드 찾기
                 if any(comp in name for comp in ["kube-apiserver", "etcd", "kube-controller-manager", "kube-scheduler"]):
                     control_plane_pods.append(it)
+            
+            # kubeadm 환경인지 확인
+            is_kubeadm = False
+            if control_plane_pods:
+                pod = control_plane_pods[0]
+                pod_name = pod.get("metadata", {}).get("name")
+                namespace = pod.get("metadata", {}).get("namespace", "kube-system")
+                is_kubeadm = self._is_kubeadm_environment(pod_name, namespace, kubeconfig)
+            
+            # kubeadm 환경이 아니면 PASS 처리
+            if not is_kubeadm:
+                return [{
+                    "CheckID": self.id,
+                    "Result": "PASS",
+                    "ObjectType": "Cluster",
+                    "ObjectName": "ALL",
+                    "Namespace": "N/A",
+                    "Reason": "검사 생략 (kubeadm 환경이 아님)",
+                    "Evidence": {"note": "이 검사는 kubeadm으로 설치된 클러스터에만 적용됩니다."},
+                    "Remediation": ""
+                }]
             
             # 2) 파일 권한 확인
             # 방법 1: 파드를 통해 확인
