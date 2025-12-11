@@ -118,10 +118,10 @@ def build_layout():
         [sg.TabGroup([[
             sg.Tab("📋 상세 결과", [
                 [sg.Table(values=[], 
-                         headings=["범주", "체크ID", "결과", "심각도", "객체타입", "객체명", "네임스페이스", "이유"], 
+                         headings=["체크ID", "결과", "심각도", "객체타입", "객체명", "네임스페이스", "이유"], 
                          key='-TABLE-', 
                          auto_size_columns=False, 
-                         col_widths=[12, 12, 8, 10, 12, 20, 15, 40], 
+                         col_widths=[12, 8, 10, 12, 20, 15, 40], 
                          justification='left', 
                          num_rows=12,
                          enable_events=True,
@@ -251,7 +251,7 @@ def main():
                         import csv
                         with open(filename, 'w', newline='', encoding='utf-8') as f:
                             writer = csv.writer(f)
-                            writer.writerow(["범주", "체크ID", "결과", "심각도", "객체타입", "객체명", "네임스페이스", "이유"])
+                            writer.writerow(["체크ID", "결과", "심각도", "객체타입", "객체명", "네임스페이스", "이유"])
                             for finding in findings:
                                 writer.writerow(finding)
                     sg.popup(f"결과가 {filename}에 저장되었습니다.")
@@ -264,14 +264,13 @@ def main():
                 selected_row = values['-TABLE-'][0]
                 if selected_row < len(findings):
                     finding = findings[selected_row]
-                    detail = f"범주: {finding[0]}\n"
-                    detail += f"체크 ID: {finding[1]}\n"
-                    detail += f"결과: {finding[2]}\n"
-                    detail += f"심각도: {finding[3]}\n"
-                    detail += f"객체 타입: {finding[4]}\n"
-                    detail += f"객체명: {finding[5]}\n"
-                    detail += f"네임스페이스: {finding[6]}\n"
-                    detail += f"이유: {finding[7]}"
+                    detail = f"체크 ID: {finding[0]}\n"
+                    detail += f"결과: {finding[1]}\n"
+                    detail += f"심각도: {finding[2]}\n"
+                    detail += f"객체 타입: {finding[3]}\n"
+                    detail += f"객체명: {finding[4]}\n"
+                    detail += f"네임스페이스: {finding[5]}\n"
+                    detail += f"이유: {finding[6]}"
                     window['-DETAIL-'].update(detail)
 
         if event == '-SCAN-EVENT-':
@@ -281,33 +280,8 @@ def main():
                 payload = obj.get('payload') or {}
                 # 심각도 정보 추가
                 severity = payload.get('Severity', 'Low')
-                # 범주 정보 추가
-                check_id = payload.get('CheckID') or payload.get('check') or '—'
-                category = payload.get('Category', 'UNKNOWN')
-                if category == 'UNKNOWN' and check_id != '—':
-                    # 체크 ID 기반으로 범주 매핑
-                    check_id_upper = str(check_id).upper()
-                    if check_id_upper.startswith("CHK-M-API-"):
-                        category = "API SERVER"
-                    elif check_id_upper.startswith("CHK-M-ETCD-"):
-                        category = "ETCD"
-                    elif check_id_upper.startswith("CHK-M-CTRL-"):
-                        category = "CONTROLLER"
-                    elif check_id_upper.startswith("CHK-M-FILE-"):
-                        category = "FILE"
-                    elif check_id_upper.startswith("CHK-M-PSA-"):
-                        category = "POD"
-                    elif check_id_upper.startswith("CHK-M-PATCH-"):
-                        category = "PATCH"
-                    elif check_id_upper.startswith("CHK-W-KUBELET-"):
-                        category = "KUBELET"
-                    elif check_id_upper.startswith("CHK-W-FILE-"):
-                        category = "FILE"
-                    else:
-                        category = "OTHER"
                 row = [
-                    category,
-                    check_id,
+                    payload.get('CheckID') or payload.get('check') or '—',
                     payload.get('Result') or payload.get('result') or '—',
                     severity,
                     payload.get('ObjectType') or payload.get('objectType') or '—',

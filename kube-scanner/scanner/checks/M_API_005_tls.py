@@ -8,35 +8,23 @@ class APIServerTLSCheck(Check):
     name = "API Server SSL/TLS 설정 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 5
+    points = 6
     risk_level = 9
     description = "SSL/TLS 통신 적용을 통해 네트워크 스니핑과 같은 공격으로 주요 정보가 노출되지 않도록 안전한 통신을 해야 하며, API server에 접근하는 대상에 대해 검증할 수 있도록 설정해야 한다. 또한 SSL/TLS 통신 적용 시에는 주기적으로 인증서를 변경하고 안전한 버전의 암호화 방식을 사용하는 방법을 통해 위험을 최소화할 수 있는 정책 설정이 필요하다."
     recommended_setting = "API server SSL/TLS가 적용된 경우\n- --secure-port 설정\n- --kubelet-certificate-authority\n- --kubelet-client-certificate\n- --kubelet-client-key\n- --tls-cert-file\n- --tls-private-key-file\n- --client-ca-file\n- --tls-cipher-suites"
     verification_command = "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-apiserver\")) | .spec.containers[].args' | grep -E 'secure-port|tls-cert|tls-private-key|client-ca'"
 
-    # 필수 TLS 플래그 (PASS를 위해 반드시 필요)
-    REQUIRED_TLS_FLAGS = [
-        "--tls-cert-file",
-        "--tls-private-key-file"
-    ]
-    
-    # 권장 TLS 플래그 (없으면 WARN)
-    RECOMMENDED_TLS_FLAGS = [
-        "--client-ca-file",
-        "--secure-port"
-    ]
-    
-    # 선택적 TLS 플래그 (없어도 OK, 있으면 체크)
-    OPTIONAL_TLS_FLAGS = [
+    TLS_FLAGS = [
+        "--secure-port",
         "--kubelet-certificate-authority",
         "--kubelet-client-certificate",
         "--kubelet-client-key",
         "--kubelet-account-key-file",
+        "--tls-cert-file",
+        "--tls-private-key-file",
+        "--client-ca-file",
         "--tls-cipher-suites"
     ]
-    
-    # 모든 TLS 플래그 (참고용)
-    TLS_FLAGS = REQUIRED_TLS_FLAGS + RECOMMENDED_TLS_FLAGS + OPTIONAL_TLS_FLAGS
 
     WEAK_CIPHER_INDICATORS = ["rc4", "des", "3des", "null", "exp", "md5", "sha1"]
 
@@ -115,30 +103,18 @@ class APIServerTLSCheck(Check):
                 if c.get("args"):
                     args_list += c.get("args")
 
-            missing_required = []
-            missing_recommended = []
+            missing_flags = []
             weak_cipher_detected = False
             insecure_port = False
             flag_values = {}
 
-            # 모든 플래그 값 추출
             for f in self.TLS_FLAGS:
                 val = self._extract_flag(args_list, f)
                 flag_values[f] = val
-
-            # 필수 플래그 체크
-            for f in self.REQUIRED_TLS_FLAGS:
-                val = flag_values.get(f)
                 if val is None or (isinstance(val, str) and val.strip() == ""):
-                    missing_required.append(f)
+                    missing_flags.append(f)
 
-            # 권장 플래그 체크
-            for f in self.RECOMMENDED_TLS_FLAGS:
-                val = flag_values.get(f)
-                if val is None or (isinstance(val, str) and val.strip() == ""):
-                    missing_recommended.append(f)
-
-            # secure-port check (명시적으로 0이 아니면 OK, 기본값 6443 사용)
+            # secure-port check
             sp = flag_values.get("--secure-port")
             if sp is not None:
                 try:
@@ -147,7 +123,6 @@ class APIServerTLSCheck(Check):
                 except Exception:
                     # non-int: warn
                     insecure_port = True
-            # secure-port가 없으면 기본값(6443) 사용하므로 OK
 
             # cipher suites weakness check
             ciphers = flag_values.get("--tls-cipher-suites")
@@ -155,60 +130,37 @@ class APIServerTLSCheck(Check):
                 weak_cipher_detected = True
 
             # Decide result
-            if missing_required or insecure_port:
-                # 필수 플래그가 없거나 secure-port가 0이면 FAIL
+            if missing_flags or insecure_port or weak_cipher_detected:
                 details = []
-                if missing_required:
-                    details.append("다음 필수 TLS 플래그가 누락되었거나 값이 비어있음: " + ", ".join(missing_required))
+                if missing_flags:
+                    details.append("다음 TLS 관련 플래그가 누락되었거나 값이 비어있음: " + ", ".join(missing_flags))
                 if insecure_port:
-                    details.append("--secure-port 가 0으로 설정됨 (TLS 미사용)")
-                if missing_recommended:
-                    details.append("다음 권장 TLS 플래그가 설정되지 않음: " + ", ".join(missing_recommended))
+                    details.append("--secure-port 가 0 이거나 비정상 값임 (TLS 미사용 가능성)")
                 if weak_cipher_detected:
                     details.append("--tls-cipher-suites 에 약한 암호화 알고리즘이 포함됨(권고하지 않음)")
                 findings.append({
                     "CheckID": self.id,
-                    "Result": "FAIL",
+                    "Result": "FAIL" if missing_flags or insecure_port else "WARN",
                     "ObjectType": "Pod",
                     "ObjectName": pod_name,
                     "Namespace": "kube-system",
                     "Reason": "; ".join(details),
                     "Evidence": {"args": args_list, "flag_values": flag_values},
                     "Remediation": (
-                        "kube-apiserver 매니페스트에 필수 TLS 플래그(--tls-cert-file, --tls-private-key-file)를 설정하세요. "
-                        "권장 플래그(--client-ca-file, --secure-port)도 설정하는 것을 권장합니다. "
-                        "또한 --tls-cipher-suites 에 강력한 TLS1.2/1.3 기반 암호화 스위트만 허용하세요."
-                    )
-                })
-            elif missing_recommended or weak_cipher_detected:
-                # 필수는 있지만 권장이 없거나 약한 암호화면 WARN
-                details = []
-                if missing_recommended:
-                    details.append("다음 권장 TLS 플래그가 설정되지 않음: " + ", ".join(missing_recommended))
-                if weak_cipher_detected:
-                    details.append("--tls-cipher-suites 에 약한 암호화 알고리즘이 포함됨(권고하지 않음)")
-                findings.append({
-                    "CheckID": self.id,
-                    "Result": "WARN",
-                    "ObjectType": "Pod",
-                    "ObjectName": pod_name,
-                    "Namespace": "kube-system",
-                    "Reason": "; ".join(details),
-                    "Evidence": {"args": args_list, "flag_values": flag_values},
-                    "Remediation": (
-                        "권장 TLS 플래그(--client-ca-file, --secure-port)를 설정하는 것을 권장합니다. "
+                        "kube-apiserver 매니페스트에 TLS 관련 플래그(예: --tls-cert-file, --tls-private-key-file, "
+                        "--client-ca-file, --kubelet-client-certificate/key 등)를 명시적으로 설정하고 "
+                        "--secure-port가 0이 아닌 안전한 포트로 설정되어 있는지 확인하세요. "
                         "또한 --tls-cipher-suites 에 강력한 TLS1.2/1.3 기반 암호화 스위트만 허용하세요."
                     )
                 })
             else:
-                # 필수 플래그가 모두 있고 secure-port도 OK면 PASS
                 findings.append({
                     "CheckID": self.id,
                     "Result": "PASS",
                     "ObjectType": "Pod",
                     "ObjectName": pod_name,
                     "Namespace": "kube-system",
-                    "Reason": "필수 TLS 플래그(--tls-cert-file, --tls-private-key-file)가 설정되어 있음",
+                    "Reason": "TLS 관련 플래그가 설정되어 있는 것으로 보임",
                     "Evidence": {"flag_values": flag_values},
                     "Remediation": ""
                 })

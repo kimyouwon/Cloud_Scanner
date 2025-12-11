@@ -38,33 +38,6 @@ def make_k8s_client():
         raise
     return client
 
-def get_category_name(check_id: str) -> str:
-    """체크 ID를 기반으로 범주 이름을 반환합니다."""
-    if not check_id:
-        return "UNKNOWN"
-    
-    check_id_upper = check_id.upper()
-    
-    # 체크 ID 패턴에 따라 범주 매핑
-    if check_id_upper.startswith("CHK-M-API-"):
-        return "API SERVER"
-    elif check_id_upper.startswith("CHK-M-ETCD-"):
-        return "ETCD"
-    elif check_id_upper.startswith("CHK-M-CTRL-"):
-        return "CONTROLLER"
-    elif check_id_upper.startswith("CHK-M-FILE-"):
-        return "FILE"
-    elif check_id_upper.startswith("CHK-M-PSA-"):
-        return "POD"
-    elif check_id_upper.startswith("CHK-M-PATCH-"):
-        return "PATCH"
-    elif check_id_upper.startswith("CHK-W-KUBELET-"):
-        return "KUBELET"
-    elif check_id_upper.startswith("CHK-W-FILE-"):
-        return "FILE"
-    else:
-        return "OTHER"
-
 def calculate_score(results: List[Dict], checks: List) -> Dict:
     """스캔 결과로부터 점수를 계산합니다. 각 체크의 points 속성을 사용합니다."""
     if not checks:
@@ -85,7 +58,6 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
     earned_points = 0
     failed_count = 0
     error_count = 0
-    warn_count = 0
     pass_count = 0
     
     # 결과별로 점수 계산
@@ -97,10 +69,6 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
         if status == "PASS":
             earned_points += points
             pass_count += 1
-        elif status == "WARN":
-            # WARN일 때는 절반 점수만 획득
-            earned_points += points * 0.5
-            warn_count += 1
         elif status == "FAIL":
             failed_count += 1
         elif status == "ERROR":
@@ -114,7 +82,6 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
         "percentage": round(percentage, 1),
         "passed": pass_count,
         "failed": failed_count,
-        "warn": warn_count,
         "error": error_count,
         "total": len(checks)
     }
@@ -129,9 +96,7 @@ def print_summary(results: List[Dict], checks: List):
     print(f"Total Checks: {score_info['total']}", file=sys.stderr)
     print(f"Passed: {score_info['passed']}", file=sys.stderr)
     print(f"Failed: {score_info['failed']}", file=sys.stderr)
-    if score_info.get('warn', 0) > 0:
-        print(f"Warnings: {score_info['warn']}", file=sys.stderr)
-    if score_info.get('error', 0) > 0:
+    if score_info['error'] > 0:
         print(f"Errors: {score_info['error']}", file=sys.stderr)
     print("-" * 50, file=sys.stderr)
     print(f"Security Score: {score_info['score']}/{score_info['max_score']} ({score_info['percentage']}%)", file=sys.stderr)
@@ -143,10 +108,8 @@ def print_summary(results: List[Dict], checks: List):
         grade = "Good"
     elif score_info['percentage'] >= 60:
         grade = "Fair"
-    elif score_info['percentage'] >= 40:
-        grade = "Warning"
     else:
-        grade = "Critical - Needs Immediate Improvement"
+        grade = "Poor - Needs Improvement"
     
     print(f"Grade: {grade}", file=sys.stderr)
     print("=" * 50 + "\n", file=sys.stderr)
@@ -215,8 +178,6 @@ def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
     check_info_map = {check.id: check.get_info() for check in checks}
     for result in unique_results_list:
         check_id = result.get("CheckID", "UNKNOWN")
-        # 범주 추가
-        result["Category"] = get_category_name(check_id)
         if check_id in check_info_map:
             info = check_info_map[check_id]
             # 권고 정보 추가
@@ -224,15 +185,6 @@ def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
             result["RiskLevel"] = info.get("risk_level", 0)
             result["RecommendedSetting"] = info.get("recommended_setting", "")
             result["VerificationCommand"] = info.get("verification_command", "")
-            # 심각도 정보 추가 (정렬용)
-            result["Severity"] = info.get("severity", "Low")
-    
-    # 결과 정렬: 체크 ID 순서
-    def sort_key(result):
-        check_id = result.get("CheckID", "UNKNOWN")
-        return check_id
-    
-    unique_results_list.sort(key=sort_key)
     
     payload = {
         "ScanID": f"scan-{os.urandom(4).hex()}",
@@ -293,13 +245,12 @@ def save_text(results: Dict, output_path: str):
             status = result.get("Result", "UNKNOWN")
             reason = result.get("Reason", "")
             severity = result.get("Severity", "")
-            category = result.get("Category", "UNKNOWN")
             obj_type = result.get("ObjectType", "")
             obj_name = result.get("ObjectName", "")
             namespace = result.get("Namespace", "")
             remediation = result.get("Remediation", "")
             
-            f.write(f"[{category}] {check_id}: {status} [{severity}]\n")
+            f.write(f"{check_id}: {status} [{severity}]\n")
             if reason:
                 f.write(f"  Reason: {reason}\n")
             if obj_type and obj_name:
@@ -342,14 +293,13 @@ def save_markdown(results: Dict, output_path: str):
         
         # Results Table
         f.write("## Detailed Results\n\n")
-        f.write("| 범주 | Check ID | Result | Severity | Resource | Namespace |\n")
-        f.write("|------|----------|--------|----------|----------|-----------|\n")
+        f.write("| Check ID | Result | Severity | Resource | Namespace |\n")
+        f.write("|----------|--------|----------|----------|-----------|\n")
         
         for result in results.get("Results", []):
             check_id = result.get("CheckID", "UNKNOWN")
             status = result.get("Result", "UNKNOWN")
             severity = result.get("Severity", "")
-            category = result.get("Category", "UNKNOWN")
             obj_type = result.get("ObjectType", "")
             obj_name = result.get("ObjectName", "")
             namespace = result.get("Namespace", "")
@@ -365,7 +315,7 @@ def save_markdown(results: Dict, output_path: str):
             else:
                 status_badge = "⚠️ ERROR"
             
-            f.write(f"| {category} | {check_id} | {status_badge} | {severity} | {resource} | {namespace} |\n")
+            f.write(f"| {check_id} | {status_badge} | {severity} | {resource} | {namespace} |\n")
         
         f.write("\n")
         
@@ -399,11 +349,8 @@ def save_html(results: Dict, output_path: str):
     percentage = summary.get('percentage', 0)
     passed = summary.get('passed', 0)
     failed = summary.get('failed', 0)
-    warn_count = summary.get('warn', 0)
     error_count = summary.get('error', 0)
     total = summary.get('total', 0)
-    score = summary.get('score', 0)
-    max_score = summary.get('max_score', 100)
     
     # Grade 결정 (한국어)
     if percentage == 100:
@@ -415,9 +362,6 @@ def save_html(results: Dict, output_path: str):
     elif percentage >= 60:
         grade = "주의"
         grade_color = "#f59e0b"  # amber
-    elif percentage >= 40:
-        grade = "경고"
-        grade_color = "#f97316"  # orange
     else:
         grade = "심각"
         grade_color = "#ef4444"  # red
@@ -642,11 +586,6 @@ def save_html(results: Dict, output_path: str):
                         <span style="font-weight:600;color:#374151;">FAIL 항목 수:</span>
                         <span style="color:#ef4444;margin-left:8px;font-weight:600;">{failed}</span>
                     </div>
-                    {('<div style="margin-bottom:12px;"><span style="font-weight:600;color:#374151;">WARN 항목 수:</span><span style="color:#f59e0b;margin-left:8px;font-weight:600;">' + str(warn_count) + '</span></div>') if warn_count > 0 else ''}
-                    <div style="margin-bottom:12px;">
-                        <span style="font-weight:600;color:#374151;">획득 점수:</span>
-                        <span style="color:#1f2937;margin-left:8px;font-weight:600;">{int(score)}/{int(max_score)}점</span>
-                    </div>
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:20px;">
@@ -655,10 +594,10 @@ def save_html(results: Dict, output_path: str):
                     </div>
                     <div>
                         <div style="font-size:2.5rem;font-weight:700;color:#1f2937;line-height:1;">
-                            {int(score)}점
+                            {int(summary.get('score', 0))}점
                         </div>
                         <div style="font-size:0.875rem;color:#6b7280;margin-top:4px;">
-                            스캔 점수 ({int(max_score)}점 만점)
+                            스캔 점수
                         </div>
                     </div>
                 </div>
@@ -668,7 +607,6 @@ def save_html(results: Dict, output_path: str):
                 <table style="width:100%;border-collapse:collapse;background:white;border:1px solid #e5e7eb;">
                     <thead style="background:#f3f4f6;">
                         <tr>
-                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">범주</th>
                             <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">항목</th>
                             <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">대상</th>
                             <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">결과</th>
@@ -682,7 +620,6 @@ def save_html(results: Dict, output_path: str):
     for result in results.get("Results", []):
         check_id = result.get("CheckID", "UNKNOWN")
         status = result.get("Result", "UNKNOWN")
-        category = result.get("Category", "UNKNOWN")
         obj_type = result.get("ObjectType", "")
         obj_name = result.get("ObjectName", "")
         namespace = result.get("Namespace", "")
@@ -701,27 +638,17 @@ def save_html(results: Dict, output_path: str):
         else:
             target = "-"
         
-        # 점수 계산
-        if status == "PASS":
-            # PASS일 때는 0 (감점 없음)
-            score_display = "0"
-        elif status == "WARN":
-            # WARN일 때는 절반 감점
-            deducted = int(check_points * 0.5)
-            score_display = f"-{deducted}" if deducted > 0 else "0"
-        elif status == "FAIL":
-            # FAIL일 때는 전체 감점
-            score_display = f"-{int(check_points)}" if check_points > 0 else "0"
+        # 점수 계산 (FAIL이면 -points, PASS면 -)
+        if status == "FAIL":
+            score_display = f"-{int(check_points)}" if check_points > 0 else "-"
         else:
-            # ERROR 등
-            score_display = "0"
+            score_display = "-"
         
         # 결과 색상
         result_color = "#ef4444" if status == "FAIL" else "#1f2937"
         
         html_content += f"""
                         <tr style="border-top:1px solid #e5e7eb;">
-                            <td style="padding:12px;color:#6b7280;font-weight:600;">{category}</td>
                             <td style="padding:12px;color:#1f2937;">{check_name}</td>
                             <td style="padding:12px;color:#6b7280;">{target}</td>
                             <td style="padding:12px;color:{result_color};font-weight:600;">{status}</td>
@@ -756,38 +683,6 @@ def save_html(results: Dict, output_path: str):
                 <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
                     <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">{check_id}: {check_name}</h3>
                     {f'<div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">{risk_level}/10</span></div>' if risk_level > 0 else ''}
-                    {f'<div style="margin-bottom:8px;"><strong>설명:</strong> {description}</div>' if description else ''}
-                    {f'<div style="margin-bottom:8px;"><strong>문제:</strong> {reason}</div>' if reason else ''}
-                    {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
-                    {f'<div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{verification_command}</pre></div>' if verification_command else ''}
-                    {f'<div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{remediation}</pre></div>' if remediation else ''}
-                </div>
-"""
-        html_content += """
-            </div>
-"""
-    
-    # WARN 항목 상세 정보 추가
-    warn_items = [r for r in results.get("Results", []) if r.get("Result") == "WARN"]
-    if warn_items:
-        html_content += f"""
-            <div style="margin-top:30px;">
-                <h2 style="color:#92400e;font-size:1.25rem;margin-bottom:20px;">⚠️ WARN 항목 상세 정보 ({len(warn_items)}건)</h2>
-"""
-        for result in warn_items:
-            check_id = result.get("CheckID", "UNKNOWN")
-            check_name = check_info.get(check_id, {}).get("name", check_id)
-            reason = result.get("Reason", "")
-            remediation = result.get("Remediation", "")
-            recommended_setting = result.get("RecommendedSetting", "")
-            verification_command = result.get("VerificationCommand", "")
-            description = result.get("Description", "")
-            risk_level = result.get("RiskLevel", 0)
-            
-            html_content += f"""
-                <div style="margin-bottom:24px;padding:20px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:4px;">
-                    <h3 style="color:#92400e;font-size:1.1rem;margin-bottom:12px;">{check_id}: {check_name}</h3>
-                    {f'<div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#d97706;">{risk_level}/10</span></div>' if risk_level > 0 else ''}
                     {f'<div style="margin-bottom:8px;"><strong>설명:</strong> {description}</div>' if description else ''}
                     {f'<div style="margin-bottom:8px;"><strong>문제:</strong> {reason}</div>' if reason else ''}
                     {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
@@ -916,8 +811,7 @@ if __name__ == "__main__":
                 status = result.get("Result", "UNKNOWN")
                 reason = result.get("Reason", "")
                 severity = result.get("Severity", "")
-                category = result.get("Category", "UNKNOWN")
-                print(f"[{category}] {check_id}: {status} [{severity}]", file=sys.stderr)
+                print(f"{check_id}: {status} [{severity}]", file=sys.stderr)
                 if reason:
                     print(f"  - {reason}", file=sys.stderr)
             print("=" * 50, file=sys.stderr)

@@ -8,7 +8,7 @@ class EtcdDataDirectoryPermissionsCheck(Check):
     name = "etcd 데이터 디렉터리 권한 설정 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 5
+    points = 6
 
     # etcd 데이터 디렉터리 경로 (일반적인 경로들)
     ETCD_DATA_DIRECTORIES = [

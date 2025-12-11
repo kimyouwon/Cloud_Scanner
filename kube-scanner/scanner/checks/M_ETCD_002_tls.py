@@ -8,7 +8,7 @@ class EtcdTLSCheck(Check):
     name = "etcd SSL/TLS 적용 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 5
+    points = 6
 
     # etcd 서버 측 TLS 플래그
     ETCD_SERVER_FLAGS = [

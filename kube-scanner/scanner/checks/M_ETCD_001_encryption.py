@@ -12,7 +12,7 @@ class EtcdEncryptionCheck(Check):
     name = "etcd 암호화 적용 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 5
+    points = 6
     risk_level = 10
     description = "etcd는 Kubernetes와 같은 분산시스템에서 중요한 데이터를 저장할 때 사용할 수 있는 키 값 분산 저장소 역할을 하고 있다. 따라서 etcd에 저장되는 데이터는 매우 민감하므로 공개되지 않도록 저장 시 암호화되어야 한다."
     recommended_setting = "etcd 암호화 방식이 aescbc 이상으로 설정된 경우\n- --encryption-provider-config 설정"
@@ -102,18 +102,6 @@ class EtcdEncryptionCheck(Check):
                 if filename in data:
                     decoded = base64.b64decode(data[filename]).decode('utf-8')
                     return self._parse_encryption_config(decoded)
-        except Exception:
-            pass
-        return None
-    
-    def _read_encryption_config_via_pod(self, pod_name, namespace, config_path, kubeconfig=''):
-        """파드를 통해 설정 파일 직접 읽기 시도"""
-        try:
-            # 파드 내부에서 cat 명령으로 파일 읽기
-            cmd = ["exec", pod_name, "-n", namespace, "--", "cat", config_path]
-            res = self._kubectl(cmd, kubeconfig)
-            if res.returncode == 0 and res.stdout:
-                return self._parse_encryption_config(res.stdout)
         except Exception:
             pass
         return None
@@ -236,10 +224,6 @@ class EtcdEncryptionCheck(Check):
             else:
                 # 플래그가 있음 -> 설정 파일 경로 확인 및 내용 분석 시도
                 config_analysis = self._check_encryption_config_from_pod(spec, encryption_config)
-                
-                # ConfigMap/Secret으로 읽을 수 없으면 파드를 통해 직접 파일 읽기 시도
-                if not config_analysis:
-                    config_analysis = self._read_encryption_config_via_pod(pod_name, "kube-system", encryption_config, kubeconfig)
                 
                 if config_analysis:
                     if config_analysis.get("status") == "safe":
