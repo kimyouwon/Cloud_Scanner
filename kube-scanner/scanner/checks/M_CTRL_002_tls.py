@@ -8,7 +8,7 @@ class ControllerManagerTLSCheck(Check):
     name = "Controller Manager SSL/TLS 설정 검사"
     category = "ControlPlane"
     severity = "High"
-    points = 6
+    points = 7
 
     FLAGS = [
         "--root-ca-file",

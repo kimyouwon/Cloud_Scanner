@@ -8,7 +8,7 @@ class ControlPlaneBindAddressCheck(Check):
     name = "Control Plane bind-address (Scheduler / ControllerManager) 검사"
     category = "ControlPlane"
     severity = "High"
-    points = 6
+    points = 7
     risk_level = 9
     description = "API Server의 서비스 API가 외부에서 접근 가능할 경우, Kubernetes 시스템의 모든 요소에 영향을 줄 수 있으므로 클러스터의 공격을 최소화하기 위해 로컬호스트 인터페이스에만 바인딩 설정을 해야 한다."
     recommended_setting = "API server 서비스 API가 외부에서 접근 불가능한 경우\n- --bind-address=127.0.0.1 (kube-scheduler, kube-controller-manager)"

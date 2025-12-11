@@ -190,6 +190,7 @@ def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
             result["RiskLevel"] = info.get("risk_level", 0)
             result["RecommendedSetting"] = info.get("recommended_setting", "")
             result["VerificationCommand"] = info.get("verification_command", "")
+            result["Category"] = info.get("category", "N/A")
     
     payload = {
         "ScanID": f"scan-{os.urandom(4).hex()}",
@@ -623,6 +624,7 @@ def save_html(results: Dict, output_path: str):
                 <table style="width:100%;border-collapse:collapse;background:white;border:1px solid #e5e7eb;">
                     <thead style="background:#f3f4f6;">
                         <tr>
+                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">범주</th>
                             <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">항목</th>
                             <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">대상</th>
                             <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">결과</th>
@@ -632,17 +634,19 @@ def save_html(results: Dict, output_path: str):
                     <tbody>
 """
     
-    # 테이블 행 추가
-    for result in results.get("Results", []):
+    # 테이블 행 추가 (Check ID 순으로 정렬)
+    sorted_results = sorted(results.get("Results", []), key=lambda x: x.get("CheckID", "UNKNOWN"))
+    for result in sorted_results:
         check_id = result.get("CheckID", "UNKNOWN")
         status = result.get("Result", "UNKNOWN")
         obj_type = result.get("ObjectType", "")
         obj_name = result.get("ObjectName", "")
         namespace = result.get("Namespace", "")
         
-        # 체크 이름 가져오기
+        # 체크 이름 및 카테고리 가져오기
         check_name = check_info.get(check_id, {}).get("name", check_id)
         check_points = check_info.get(check_id, {}).get("points", 0)
+        check_category = result.get("Category", check_info.get(check_id, {}).get("category", "N/A"))
         
         # 대상 정보 구성
         if namespace and namespace != "N/A" and obj_name:
@@ -670,6 +674,7 @@ def save_html(results: Dict, output_path: str):
         
         html_content += f"""
                         <tr style="border-top:1px solid #e5e7eb;">
+                            <td style="padding:12px;color:#6b7280;font-weight:500;">{check_category}</td>
                             <td style="padding:12px;color:#1f2937;">{check_name}</td>
                             <td style="padding:12px;color:#6b7280;">{target}</td>
                             <td style="padding:12px;color:{result_color};font-weight:600;">{status}</td>

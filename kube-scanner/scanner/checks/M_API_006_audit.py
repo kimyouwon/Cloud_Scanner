@@ -8,7 +8,7 @@ class APIServerAuditCheck(Check):
     name = "API Server 감사(audit) 로그 설정 검사"
     category = "ControlPlane"
     severity = "High"
-    points = 6
+    points = 7
     risk_level = 7
     description = "로그 정보는 침해 사고 발생시 해킹의 흔적 및 공격기법을 확인할 수 있는 중요 자료로 정기적인 로그 분석을 통하여 시스템 침입 흔적을 확인할 수 있다."
     recommended_setting = "API server 로그가 활성화된 경우\n- --audit-log-path\n- --audit-policy-file\n- --audit-log-maxage\n- --audit-log-maxbackup\n- --audit-log-maxsize"

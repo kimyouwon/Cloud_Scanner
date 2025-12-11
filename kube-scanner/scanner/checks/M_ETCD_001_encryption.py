@@ -12,7 +12,7 @@ class EtcdEncryptionCheck(Check):
     name = "etcd 암호화 적용 검사"
     category = "ControlPlane"
     severity = "Critical"
-    points = 6
+    points = 7
     risk_level = 10
     description = "etcd는 Kubernetes와 같은 분산시스템에서 중요한 데이터를 저장할 때 사용할 수 있는 키 값 분산 저장소 역할을 하고 있다. 따라서 etcd에 저장되는 데이터는 매우 민감하므로 공개되지 않도록 저장 시 암호화되어야 한다."
     recommended_setting = "etcd 암호화 방식이 aescbc 이상으로 설정된 경우\n- --encryption-provider-config 설정"
