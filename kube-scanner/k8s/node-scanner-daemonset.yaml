@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-scanner
+  namespace: kube-system
+  labels:
+    app: node-scanner
+spec:
+  selector:
+    matchLabels:
+      app: node-scanner
+  template:
+    metadata:
+      labels:
+        app: node-scanner
+    spec:
+      hostPID: true
+      hostNetwork: false
+      tolerations:
+        - operator: "Exists"
+      containers:
+        - name: node-scanner
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              NODE_NAME="$(cat /etc/hostname 2>/dev/null || echo unknown)"
+
+              emit_kv() {
+                # usage: emit_kv PREFIX key=value key=value ...
+                # example: emit_kv NODE_SCANNER_FILE path=/etc/kubernetes/kubelet.conf mode=644 owner=root group=root
+                echo "$@"
+              }
+
+              emit_file() {
+                # $1: absolute host path (e.g. /etc/kubernetes/kubelet.conf)
+                p="$1"
+                hp="/host${p}"
+                if [ ! -e "$hp" ]; then
+                  emit_kv NODE_SCANNER_MISSING "path=${p}"
+                  return 0
+                fi
+
+                # Prefer stat for stable parsing; fallback to ls.
+                if out="$(stat -c '%a %U %G' "$hp" 2>/dev/null)"; then
+                  mode="$(echo "$out" | awk '{print $1}')"
+                  owner="$(echo "$out" | awk '{print $2}')"
+                  group="$(echo "$out" | awk '{print $3}')"
+                  emit_kv NODE_SCANNER_FILE "path=${p}" "mode=${mode}" "owner=${owner}" "group=${group}"
+                else
+                  ls_out="$(ls -ld "$hp" 2>/dev/null || true)"
+                  # best-effort parse: perms owner group
+                  perms="$(echo "$ls_out" | awk '{print $1}')"
+                  owner="$(echo "$ls_out" | awk '{print $3}')"
+                  group="$(echo "$ls_out" | awk '{print $4}')"
+                  emit_kv NODE_SCANNER_FILE "path=${p}" "perms=${perms}" "owner=${owner}" "group=${group}"
+                fi
+              }
+
+              emit_sysctl() {
+                key="$1"
+                f="/host/proc/sys/$(echo "$key" | tr '.' '/')"
+                if [ -r "$f" ]; then
+                  val="$(cat "$f" 2>/dev/null | tr -d '\r\n' || true)"
+                  emit_kv NODE_SCANNER_SYSCTL "key=${key}" "value=${val}"
+                else
+                  emit_kv NODE_SCANNER_SYSCTL "key=${key}" "value="
+                fi
+              }
+
+              emit_kubelet() {
+                cfg="/host/var/lib/kubelet/config.yaml"
+                if [ ! -r "$cfg" ]; then
+                  emit_kv NODE_SCANNER_KUBELET "present=false"
+                  return 0
+                fi
+
+                has_client_ca="false"
+                auth_mode="unknown"
+                has_tls_cert="false"
+                has_tls_key="false"
+                server_tls_bootstrap="false"
+
+                if grep -Eq 'clientCAFile\\s*:' "$cfg"; then has_client_ca="true"; fi
+                if grep -Ei 'mode:\\s*AlwaysAllow' "$cfg"; then auth_mode="AlwaysAllow"; fi
+                if grep -Ei 'mode:\\s*Webhook' "$cfg"; then auth_mode="Webhook"; fi
+                if [ "$auth_mode" = "unknown" ]; then auth_mode="Webhook"; fi
+                if grep -Eq 'tlsCertFile\\s*:' "$cfg"; then has_tls_cert="true"; fi
+                if grep -Eq 'tlsPrivateKeyFile\\s*:' "$cfg"; then has_tls_key="true"; fi
+                if grep -Eq 'serverTLSBootstrap:\\s*true' "$cfg"; then server_tls_bootstrap="true"; fi
+
+                emit_kv NODE_SCANNER_KUBELET \
+                  "present=true" \
+                  "has_clientCAFile=${has_client_ca}" \
+                  "authorization_mode=${auth_mode}" \
+                  "has_tlsCertFile=${has_tls_cert}" \
+                  "has_tlsPrivateKeyFile=${has_tls_key}" \
+                  "serverTLSBootstrap=${server_tls_bootstrap}"
+              }
+
+              emit_kv NODE_SCANNER_NODE "name=${NODE_NAME}"
+
+              # Kubelet / control-plane 관련 주요 파일 권한
+              emit_file /var/lib/kubelet/config.yaml
+              emit_file /etc/kubernetes/kubelet.conf
+              emit_file /etc/kubernetes/admin.conf
+              emit_file /etc/kubernetes/scheduler.conf
+              emit_file /etc/kubernetes/controller-manager.conf
+              emit_file /etc/kubernetes/manifests/kube-apiserver.yaml
+              emit_file /etc/kubernetes/manifests/kube-controller-manager.yaml
+              emit_file /etc/kubernetes/manifests/kube-scheduler.yaml
+              emit_file /etc/kubernetes/manifests/etcd.yaml
+
+              # 워커 노드 인증서/키 파일 권한
+              if [ -d /host/var/lib/kubelet/pki ]; then
+                for f in /host/var/lib/kubelet/pki/*; do
+                  if [ -f "$f" ]; then
+                    p="${f#/host}"
+                    emit_file "$p"
+                  fi
+                done
+              fi
+
+              # kubelet 설정 요약
+              emit_kubelet
+
+              # 대표적인 커널 파라미터 값
+              emit_sysctl net.ipv4.ip_forward
+              emit_sysctl net.bridge.bridge-nf-call-iptables
+              emit_sysctl kernel.panic_on_oops
+
+              # 로그가 남아있도록 컨테이너는 무한 대기
+              # 로그가 남아있도록 컨테이너는 무한 대기
+              sleep 3600d
+          volumeMounts:
+            - name: host-etc-kubernetes
+              mountPath: /host/etc/kubernetes
+              readOnly: true
+            - name: host-var-lib-kubelet
+              mountPath: /host/var/lib/kubelet
+              readOnly: true
+            - name: host-proc
+              mountPath: /host/proc
+              readOnly: true
+      volumes:
+        - name: host-etc-kubernetes
+          hostPath:
+            path: /etc/kubernetes
+            type: DirectoryOrCreate
+        - name: host-var-lib-kubelet
+          hostPath:
+            path: /var/lib/kubelet
+            type: DirectoryOrCreate
+        - name: host-proc
+          hostPath:
+            path: /proc
+            type: Directory
+

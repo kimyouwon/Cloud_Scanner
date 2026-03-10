@@ -31,8 +31,10 @@ class WorkerCertificateFilePermissionsCheck(Check):
             cmd += ["--kubeconfig", kubeconfig]
         return subprocess.run(cmd, capture_output=True, text=True)
 
-    def run(self, kubeconfig=''):
-        findings = []
+    def run(self, kubeconfig='', node_scanner_data=None):
+        """
+        node-scanner DaemonSet 로그가 있으면 /var/lib/kubelet/pki 내 인증서/키 권한을 노드별로 자동 판정합니다.
+        """
         
         try:
             # 노드 목록 가져오기
@@ -57,41 +59,146 @@ class WorkerCertificateFilePermissionsCheck(Check):
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
-            
-            # 워커 노드 인증서 파일 권한은 노드에 직접 접근해야 확인 가능
-            # 일반적으로는 DaemonSet이나 노드 접근이 필요하므로 WARN 처리
+
+            if isinstance(node_scanner_data, dict) and node_scanner_data.get("available"):
+                ns_nodes = (node_scanner_data.get("nodes") or {})
+                results = []
+
+                def is_cert(path: str) -> bool:
+                    p = path.lower()
+                    return any(p.endswith(ext) for ext in self.CERT_EXTENSIONS)
+
+                def is_key(path: str) -> bool:
+                    return path.lower().endswith(".key")
+
+                def validate_file(path: str, fi: dict):
+                    if not fi or fi.get("missing"):
+                        return None, "파일이 없거나 확인 불가"
+                    owner = fi.get("owner")
+                    group = fi.get("group")
+                    mode = fi.get("mode")
+                    issues = []
+                    if owner and owner != "root":
+                        issues.append(f"owner={owner}")
+                    if group and group != "root":
+                        issues.append(f"group={group}")
+
+                    max_mode = 644 if is_cert(path) else (600 if is_key(path) else 644)
+                    if isinstance(mode, int) and mode > max_mode:
+                        issues.append(f"mode={mode} (max {max_mode})")
+                    if issues:
+                        return False, "; ".join(issues)
+                    if mode is None:
+                        return None, "mode 확인 불가"
+                    return True, "OK"
+
+                for node in node_items:
+                    node_name = node.get("metadata", {}).get("name", "unknown")
+                    node_info = node.get("status", {}).get("nodeInfo", {})
+                    os_image = node_info.get("osImage", "unknown")
+
+                    nd = ns_nodes.get(node_name) or {}
+                    files = nd.get("files") or {}
+                    pki_files = {p: fi for p, fi in files.items() if p.startswith("/var/lib/kubelet/pki/")}
+
+                    if not pki_files:
+                        status = "WARN"
+                        reason = "pki 파일을 찾을 수 없거나 수집되지 않음"
+                        results.append({
+                            "CheckID": self.id,
+                            "Result": status,
+                            "ObjectType": "Node",
+                            "ObjectName": node_name,
+                            "Namespace": "N/A",
+                            "Reason": reason,
+                            "Evidence": {
+                                "node": node_name,
+                                "os_image": os_image,
+                                "pod": nd.get("pod"),
+                                "files": {},
+                                "error": nd.get("error"),
+                            },
+                            "Remediation": (
+                                "노드에서 /var/lib/kubelet/pki 디렉터리 내 인증서/키 파일의 권한을 확인하세요.\n"
+                            )
+                        })
+                        continue
+
+                    bad = []
+                    warns = []
+                    checked = {}
+                    for path, fi in sorted(pki_files.items()):
+                        ok, msg = validate_file(path, fi)
+                        checked[path] = fi
+                        if ok is False:
+                            bad.append(f"{path}({msg})")
+                        elif ok is None:
+                            warns.append(f"{path}({msg})")
+
+                    if bad:
+                        status = "FAIL"
+                        reason = "인증서/키 파일 권한이 부적절함: " + ", ".join(bad[:10]) + ("..." if len(bad) > 10 else "")
+                    elif warns:
+                        status = "WARN"
+                        reason = "인증서/키 파일 권한 일부를 확인할 수 없음: " + ", ".join(warns[:10]) + ("..." if len(warns) > 10 else "")
+                    else:
+                        status = "PASS"
+                        reason = "인증서/키 파일 권한이 권장값으로 설정됨"
+
+                    results.append({
+                        "CheckID": self.id,
+                        "Result": status,
+                        "ObjectType": "Node",
+                        "ObjectName": node_name,
+                        "Namespace": "N/A",
+                        "Reason": reason,
+                        "Evidence": {
+                            "node": node_name,
+                            "os_image": os_image,
+                            "pod": nd.get("pod"),
+                            "checked_count": len(checked),
+                            "files": checked,
+                            "error": nd.get("error"),
+                        },
+                        "Remediation": (
+                            "각 인증서/키 파일의 소유자/그룹을 root로 설정하고,\n"
+                            "인증서(.crt/.pem 등)는 mode <= 644,\n"
+                            "키(.key)는 mode <= 600 으로 설정하세요.\n"
+                        )
+                    })
+
+                return results
+
+            # fallback – node-scanner 없음
+            results = []
             for node in node_items:
                 node_name = node.get("metadata", {}).get("name", "unknown")
                 node_info = node.get("status", {}).get("nodeInfo", {})
                 os_image = node_info.get("osImage", "unknown")
-                
-                findings.append({
+                results.append({
                     "CheckID": self.id,
                     "Result": "WARN",
                     "ObjectType": "Node",
                     "ObjectName": node_name,
                     "Namespace": "N/A",
-                    "Reason": "워커 노드 인증서 파일 권한을 자동으로 확인할 수 없음 (노드에 직접 접근 필요)",
+                    "Reason": "워커 노드 인증서 파일 권한을 자동으로 확인할 수 없음 (node-scanner DaemonSet 필요)",
                     "Evidence": {
                         "node": node_name,
                         "os_image": os_image,
-                        "directories_to_check": self.CERT_DIRECTORIES
+                        "directories_to_check": self.CERT_DIRECTORIES,
+                        "node_scanner_error": (node_scanner_data or {}).get("error") if isinstance(node_scanner_data, dict) else None
                     },
                     "Remediation": (
-                        f"노드 {node_name}에 직접 접근하여 다음 디렉터리의 인증서 및 키 파일 권한을 확인하세요:\n\n" +
-                        "\n".join(f"- {d}" for d in self.CERT_DIRECTORIES) +
-                        "\n\n권장 설정:\n"
-                        "- 인증서 파일(.crt, .pem): 소유자/그룹 root, 권한 644\n"
-                        "- 키 파일(.key): 소유자/그룹 root, 권한 600\n\n"
-                        "확인 명령:\n"
+                        "노드에서 다음 명령으로 인증서/키 파일 권한을 확인/수정하세요:\n"
                         "ls -al /var/lib/kubelet/pki/*.crt\n"
-                        "ls -al /var/lib/kubelet/pki/*.key\n\n"
-                        "수정 명령:\n"
+                        "ls -al /var/lib/kubelet/pki/*.key\n"
                         "sudo chown root:root <file>\n"
-                        "sudo chmod 644 <cert-file>  # 인증서 파일\n"
-                        "sudo chmod 600 <key-file>   # 키 파일"
+                        "sudo chmod 644 <cert-file>\n"
+                        "sudo chmod 600 <key-file>\n"
                     )
                 })
+
+            return results
             
         except Exception as e:
             return [{
@@ -101,5 +208,4 @@ class WorkerCertificateFilePermissionsCheck(Check):
                 "Evidence": {"error": str(e), "trace": traceback.format_exc()},
                 "Remediation": "kubectl get nodes 명령을 직접 실행하여 확인하세요"
             }]
-        
-        return findings
+

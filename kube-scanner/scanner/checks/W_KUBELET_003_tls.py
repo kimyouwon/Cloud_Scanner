@@ -39,8 +39,7 @@ class KubeletTLSCheck(Check):
         except Exception as e:
             return {"has_tls": None, "error": str(e)}
 
-    def run(self, kubeconfig=''):
-        findings = []
+    def run(self, kubeconfig='', node_scanner_data=None):
         
         try:
             # 노드 목록 가져오기
@@ -65,84 +64,100 @@ class KubeletTLSCheck(Check):
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
-            
-            # 각 노드의 kubelet TLS 설정 확인
+
+            # node-scanner 기반 자동 판정
+            if isinstance(node_scanner_data, dict) and node_scanner_data.get("available"):
+                ns_nodes = (node_scanner_data.get("nodes") or {})
+                per_node = {}
+                any_fail = False
+                any_warn = False
+
+                for node in node_items:
+                    node_name = node.get("metadata", {}).get("name", "unknown")
+                    node_info = node.get("status", {}).get("nodeInfo", {})
+                    kubelet_version = node_info.get("kubeletVersion", "unknown")
+
+                    nd = ns_nodes.get(node_name) or {}
+                    kubelet = nd.get("kubelet") or {}
+                    present = kubelet.get("present") == "true"
+                    has_cert = kubelet.get("has_tlsCertFile") == "true"
+                    has_key = kubelet.get("has_tlsPrivateKeyFile") == "true"
+                    server_bootstrap = kubelet.get("serverTLSBootstrap") == "true"
+
+                    if not present:
+                        status = "WARN"
+                        any_warn = True
+                        reason = "kubelet config.yaml을 읽을 수 없어 TLS 설정을 확인할 수 없음"
+                    else:
+                        # TLS 판정: serverTLSBootstrap=true 이거나 cert/key가 명시되어 있으면 PASS
+                        if server_bootstrap or (has_cert and has_key):
+                            status = "PASS"
+                            reason = "Kubelet TLS 설정이 확인됨"
+                        else:
+                            status = "FAIL"
+                            any_fail = True
+                            reason = "Kubelet TLS 설정이 없거나 부적절함"
+
+                    per_node[node_name] = {
+                        "result": status,
+                        "kubelet_version": kubelet_version,
+                        "pod": nd.get("pod"),
+                        "kubelet_summary": kubelet,
+                        "error": nd.get("error"),
+                    }
+
+                overall = "FAIL" if any_fail else ("WARN" if any_warn else "PASS")
+                node_names = ", ".join(sorted(per_node.keys()))
+                return [{
+                    "CheckID": self.id,
+                    "Result": overall,
+                    "ObjectType": "Cluster",
+                    "ObjectName": node_names or "ALL",
+                    "Namespace": "N/A",
+                    "Reason": "노드별 kubelet TLS 설정 점검 결과",
+                    "Evidence": {"per_node": per_node},
+                    "Remediation": (
+                        "각 노드의 kubelet TLS 설정을 활성화하세요.\n"
+                        "예:\n"
+                        "- serverTLSBootstrap: true\n"
+                        "또는 kubelet 플래그로 --tls-cert-file / --tls-private-key-file 설정\n"
+                    )
+                }]
+
+            # fallback: ConfigMap 기반
+            per_node = {}
+            any_fail = False
+            any_warn = False
             for node in node_items:
                 node_name = node.get("metadata", {}).get("name", "unknown")
                 node_info = node.get("status", {}).get("nodeInfo", {})
                 kubelet_version = node_info.get("kubeletVersion", "unknown")
-                
                 tls_check = self._check_kubelet_tls(node_name, kubeconfig)
-                
                 if tls_check.get("has_tls") is True:
-                    findings.append({
-                        "CheckID": self.id,
-                        "Result": "PASS",
-                        "ObjectType": "Node",
-                        "ObjectName": node_name,
-                        "Namespace": "N/A",
-                        "Reason": "Kubelet TLS 설정이 확인됨",
-                        "Evidence": {
-                            "node": node_name,
-                            "kubelet_version": kubelet_version
-                        },
-                        "Remediation": ""
-                    })
+                    status = "PASS"
                 elif tls_check.get("has_tls") is False:
-                    findings.append({
-                        "CheckID": self.id,
-                        "Result": "FAIL",
-                        "ObjectType": "Node",
-                        "ObjectName": node_name,
-                        "Namespace": "N/A",
-                        "Reason": "Kubelet TLS 설정이 없거나 부적절함",
-                        "Evidence": {
-                            "node": node_name,
-                            "kubelet_version": kubelet_version
-                        },
-                        "Remediation": (
-                            f"노드 {node_name}의 kubelet 설정에 TLS 관련 플래그를 추가하세요.\n\n"
-                            "kubelet 설정 파일(/var/lib/kubelet/config.yaml)에 다음을 추가:\n"
-                            "serverTLSBootstrap: true\n\n"
-                            "또는 kubelet 서비스 파일에 다음 플래그 추가:\n"
-                            "--tls-cert-file=/var/lib/kubelet/pki/kubelet.crt\n"
-                            "--tls-private-key-file=/var/lib/kubelet/pki/kubelet.key"
-                        )
-                    })
+                    status = "FAIL"
+                    any_fail = True
                 else:
-                    # 확인 불가
-                    findings.append({
-                        "CheckID": self.id,
-                        "Result": "WARN",
-                        "ObjectType": "Node",
-                        "ObjectName": node_name,
-                        "Namespace": "N/A",
-                        "Reason": "Kubelet TLS 설정을 자동으로 확인할 수 없음 (노드에 직접 접근 필요)",
-                        "Evidence": {
-                            "node": node_name,
-                            "kubelet_version": kubelet_version,
-                            "error": tls_check.get("error", "설정 확인 불가")
-                        },
-                        "Remediation": (
-                            f"노드 {node_name}에 직접 접근하여 kubelet TLS 설정을 확인하세요:\n\n"
-                            "1. kubelet 설정 파일 확인:\n"
-                            "   cat /var/lib/kubelet/config.yaml | grep -E 'tls|TLS'\n\n"
-                            "2. kubelet 서비스 파일 확인:\n"
-                            "   cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf | grep -E 'tls-cert-file|tls-private-key-file'\n\n"
-                            "권장 설정:\n"
-                            "- --tls-cert-file=/var/lib/kubelet/pki/kubelet.crt\n"
-                            "- --tls-private-key-file=/var/lib/kubelet/pki/kubelet.key"
-                        )
-                    })
-            
-            if not findings:
-                findings.append({
-                    "CheckID": self.id,
-                    "Result": "WARN",
-                    "Reason": "노드 정보를 확인할 수 없음",
-                    "Evidence": {},
-                    "Remediation": "kubectl get nodes 명령으로 노드 상태 확인"
-                })
+                    status = "WARN"
+                    any_warn = True
+                per_node[node_name] = {
+                    "result": status,
+                    "kubelet_version": kubelet_version,
+                    "error": tls_check.get("error"),
+                }
+            overall = "FAIL" if any_fail else ("WARN" if any_warn else "PASS")
+            node_names = ", ".join(sorted(per_node.keys()))
+            return [{
+                "CheckID": self.id,
+                "Result": overall,
+                "ObjectType": "Cluster",
+                "ObjectName": node_names or "ALL",
+                "Namespace": "N/A",
+                "Reason": "kubelet TLS 설정 점검 결과(대체 경로: ConfigMap 기반)",
+                "Evidence": {"per_node": per_node},
+                "Remediation": "node-scanner DaemonSet을 배포하면 노드별로 더 정확히 판정할 수 있습니다."
+            }]
             
         except Exception as e:
             return [{
@@ -152,5 +167,4 @@ class KubeletTLSCheck(Check):
                 "Evidence": {"error": str(e), "trace": traceback.format_exc()},
                 "Remediation": "kubectl get nodes 명령을 직접 실행하여 확인하세요"
             }]
-        
-        return findings
+

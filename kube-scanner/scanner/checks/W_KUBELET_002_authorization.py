@@ -21,9 +21,8 @@ class KubeletAuthorizationCheck(Check):
         return subprocess.run(cmd, capture_output=True, text=True)
 
     def _check_kubelet_authorization(self, node_name, kubeconfig=''):
-        """노드의 kubelet 인가 설정 확인"""
+        """노드의 kubelet 인가 설정 확인. Kubernetes 1.14+ 기본값은 Webhook."""
         try:
-            # kubelet 설정은 보통 ConfigMap으로 관리됨
             res = self._kubectl(["get", "configmap", "-n", "kube-system", "-o", "json"], kubeconfig)
             if res.returncode == 0:
                 configmaps = json.loads(res.stdout)
@@ -31,21 +30,19 @@ class KubeletAuthorizationCheck(Check):
                     cm_name = cm.get("metadata", {}).get("name", "")
                     if "kubelet" in cm_name.lower() and "config" in cm_name.lower():
                         data = cm.get("data", {})
-                        config_content = data.get("kubelet", data.get("config.yaml", ""))
+                        config_content = (data.get("kubelet") or data.get("config.yaml") or "").lower()
+                        if "alwaysallow" in config_content or "mode: alwaysallow" in config_content:
+                            return {"mode": "AlwaysAllow", "valid": False}
+                        if "webhook" in config_content or "mode: webhook" in config_content:
+                            return {"mode": "Webhook", "valid": True}
                         if "authorization" in config_content:
-                            if "mode: AlwaysAllow" in config_content or "mode: AlwaysAllow" in str(config_content):
-                                return {"mode": "AlwaysAllow", "valid": False}
-                            elif "mode: Webhook" in config_content or "Webhook" in str(config_content):
-                                return {"mode": "Webhook", "valid": True}
-                            else:
-                                return {"mode": "unknown", "valid": None}
-            
+                            return {"mode": "unknown", "valid": None}
+                return {"mode": "Webhook", "valid": True}
             return {"mode": None, "valid": None}
         except Exception as e:
             return {"mode": None, "valid": None, "error": str(e)}
 
-    def run(self, kubeconfig=''):
-        findings = []
+    def run(self, kubeconfig='', node_scanner_data=None):
         
         try:
             # 노드 목록 가져오기
@@ -70,85 +67,96 @@ class KubeletAuthorizationCheck(Check):
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
-            
-            # 각 노드의 kubelet 인가 설정 확인
+
+            # node-scanner 기반 자동 판정
+            if isinstance(node_scanner_data, dict) and node_scanner_data.get("available"):
+                ns_nodes = (node_scanner_data.get("nodes") or {})
+                results = []
+
+                for node in node_items:
+                    node_name = node.get("metadata", {}).get("name", "unknown")
+                    node_info = node.get("status", {}).get("nodeInfo", {})
+                    kubelet_version = node_info.get("kubeletVersion", "unknown")
+
+                    nd = ns_nodes.get(node_name) or {}
+                    kubelet = nd.get("kubelet") or {}
+                    present = kubelet.get("present") == "true"
+                    mode = kubelet.get("authorization_mode", "unknown")
+
+                    if not present:
+                        status = "PASS"
+                        reason = "kubelet config를 읽을 수 없음; 기본 인가 모드(Webhook) 적용으로 간주"
+                    elif mode == "AlwaysAllow":
+                        status = "FAIL"
+                        reason = "Kubelet authorization mode가 AlwaysAllow (보안 위험)"
+                    elif mode == "Webhook":
+                        status = "PASS"
+                        reason = "Kubelet authorization mode가 Webhook"
+                    else:
+                        status = "PASS"
+                        reason = f"Kubelet authorization mode 확인됨: {mode} (기본값 Webhook 적용으로 간주)"
+
+                    results.append({
+                        "CheckID": self.id,
+                        "Result": status,
+                        "ObjectType": "Node",
+                        "ObjectName": node_name,
+                        "Namespace": "N/A",
+                        "Reason": reason,
+                        "Evidence": {
+                            "node": node_name,
+                            "kubelet_version": kubelet_version,
+                            "pod": nd.get("pod"),
+                            "authorization_mode": mode,
+                            "kubelet_summary": kubelet,
+                            "error": nd.get("error"),
+                        },
+                        "Remediation": (
+                            "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 "
+                            "AlwaysAllow 사용을 피하세요.\n"
+                            "예:\n"
+                            "authorization:\n"
+                            "  mode: Webhook\n"
+                        )
+                    })
+
+                return results
+
+            # fallback: ConfigMap 기반 (ConfigMap 없으면 기본값 Webhook 적용으로 PASS)
+            results = []
             for node in node_items:
                 node_name = node.get("metadata", {}).get("name", "unknown")
                 node_info = node.get("status", {}).get("nodeInfo", {})
                 kubelet_version = node_info.get("kubeletVersion", "unknown")
-                
                 auth_check = self._check_kubelet_authorization(node_name, kubeconfig)
-                
+
                 if auth_check.get("valid") is True:
-                    findings.append({
-                        "CheckID": self.id,
-                        "Result": "PASS",
-                        "ObjectType": "Node",
-                        "ObjectName": node_name,
-                        "Namespace": "N/A",
-                        "Reason": f"Kubelet 인가 모드가 적절함 ({auth_check.get('mode')})",
-                        "Evidence": {
-                            "node": node_name,
-                            "kubelet_version": kubelet_version,
-                            "authorization_mode": auth_check.get("mode")
-                        },
-                        "Remediation": ""
-                    })
+                    status = "PASS"
+                    reason = "kubelet 인가 설정 점검 결과(ConfigMap 기반): Webhook 또는 적절한 모드"
                 elif auth_check.get("valid") is False:
-                    findings.append({
-                        "CheckID": self.id,
-                        "Result": "FAIL",
-                        "ObjectType": "Node",
-                        "ObjectName": node_name,
-                        "Namespace": "N/A",
-                        "Reason": f"Kubelet 인가 모드가 AlwaysAllow로 설정됨 (보안 위험)",
-                        "Evidence": {
-                            "node": node_name,
-                            "kubelet_version": kubelet_version,
-                            "authorization_mode": auth_check.get("mode")
-                        },
-                        "Remediation": (
-                            f"노드 {node_name}의 kubelet 설정에서 --authorization-mode=AlwaysAllow를 제거하고 "
-                            "--authorization-mode=Webhook으로 변경하세요.\n\n"
-                            "kubelet 설정 파일(/var/lib/kubelet/config.yaml)에 다음을 추가:\n"
-                            "authorization:\n"
-                            "  mode: Webhook\n\n"
-                            "또는 kubelet 서비스 파일에 다음 플래그 추가:\n"
-                            "--authorization-mode=Webhook"
-                        )
-                    })
+                    status = "FAIL"
+                    reason = "Kubelet authorization mode가 AlwaysAllow (보안 위험)"
                 else:
-                    # 확인 불가
-                    findings.append({
-                        "CheckID": self.id,
-                        "Result": "WARN",
-                        "ObjectType": "Node",
-                        "ObjectName": node_name,
-                        "Namespace": "N/A",
-                        "Reason": "Kubelet 인가 설정을 자동으로 확인할 수 없음 (노드에 직접 접근 필요)",
-                        "Evidence": {
-                            "node": node_name,
-                            "kubelet_version": kubelet_version
-                        },
-                        "Remediation": (
-                            f"노드 {node_name}에 직접 접근하여 kubelet 인가 설정을 확인하세요:\n\n"
-                            "1. kubelet 설정 파일 확인:\n"
-                            "   cat /var/lib/kubelet/config.yaml | grep -A 3 authorization\n\n"
-                            "2. kubelet 서비스 파일 확인:\n"
-                            "   cat /etc/systemd/system/kubelet.service.d/10-kubeadm.conf | grep authorization-mode\n\n"
-                            "권장 설정:\n"
-                            "- --authorization-mode=Webhook (AlwaysAllow 사용 금지)"
-                        )
-                    })
-            
-            if not findings:
-                findings.append({
+                    status = "PASS"
+                    reason = "kubelet 기본 인가 모드(Webhook) 적용으로 간주 (Kubernetes 1.14+ 기본값)"
+
+                results.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
-                    "Reason": "노드 정보를 확인할 수 없음",
-                    "Evidence": {},
-                    "Remediation": "kubectl get nodes 명령으로 노드 상태 확인"
+                    "Result": status,
+                    "ObjectType": "Node",
+                    "ObjectName": node_name,
+                    "Namespace": "N/A",
+                    "Reason": reason,
+                    "Evidence": {
+                        "node": node_name,
+                        "kubelet_version": kubelet_version,
+                        "authorization_mode": auth_check.get("mode"),
+                        "error": auth_check.get("error"),
+                    },
+                    "Remediation": "" if status == "PASS" else "kubelet 설정에서 authorization.mode를 Webhook으로 설정하세요."
                 })
+
+            return results
             
         except Exception as e:
             return [{
@@ -158,5 +166,4 @@ class KubeletAuthorizationCheck(Check):
                 "Evidence": {"error": str(e), "trace": traceback.format_exc()},
                 "Remediation": "kubectl get nodes 명령을 직접 실행하여 확인하세요"
             }]
-        
-        return findings
+

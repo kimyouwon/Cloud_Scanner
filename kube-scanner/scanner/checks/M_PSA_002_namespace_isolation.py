@@ -135,14 +135,14 @@ class NamespaceIsolationCheck(Check):
                 
                 if enforce_label:
                     if enforce_label == "privileged":
-                        # privileged는 제한이 없으므로 WARN
+                        # privileged는 제한이 없음 → FAIL
                         psa_findings.append({
                             "CheckID": self.id,
-                            "Result": "WARN",
+                            "Result": "FAIL",
                             "ObjectType": "Namespace",
                             "ObjectName": ns_name,
                             "Namespace": ns_name,
-                            "Reason": f"PSA enforce 레벨이 'privileged'로 설정됨 (호스트 네임스페이스 공유 제한 없음)",
+                            "Reason": "PSA enforce 레벨이 'privileged'로 설정됨 (호스트 네임스페이스 공유 제한 없음)",
                             "Evidence": {
                                 "enforce": enforce_label,
                                 "audit": audit_label,
@@ -157,35 +157,48 @@ class NamespaceIsolationCheck(Check):
                             "Severity": self.severity
                         })
                     elif enforce_label == "baseline":
-                        # baseline은 hostNetwork만 차단, hostPID/hostIPC는 허용
+                        # baseline은 hostNetwork 차단, hostPID/hostIPC는 허용 → PASS (권장 수준 충족)
                         psa_findings.append({
                             "CheckID": self.id,
-                            "Result": "WARN",
+                            "Result": "PASS",
                             "ObjectType": "Namespace",
                             "ObjectName": ns_name,
                             "Namespace": ns_name,
-                            "Reason": f"PSA enforce 레벨이 'baseline'로 설정됨 (hostPID, hostIPC는 허용됨)",
+                            "Reason": "PSA enforce 레벨이 'baseline'로 설정됨 (hostNetwork 차단)",
                             "Evidence": {
                                 "enforce": enforce_label,
                                 "audit": audit_label,
                                 "warn": warn_label
                             },
-                            "Remediation": (
-                                f"더 강한 보안을 위해 네임스페이스 {ns_name}의 PSA 레벨을 'restricted'로 변경하세요:\n"
-                                f"kubectl label namespace {ns_name} pod-security.kubernetes.io/enforce=restricted --overwrite"
-                            ),
+                            "Remediation": "",
                             "Severity": self.severity
                         })
-                    # restricted는 PASS (별도로 추가하지 않음)
+                    else:
+                        # restricted 등 → PASS
+                        psa_findings.append({
+                            "CheckID": self.id,
+                            "Result": "PASS",
+                            "ObjectType": "Namespace",
+                            "ObjectName": ns_name,
+                            "Namespace": ns_name,
+                            "Reason": f"PSA enforce 레벨이 '{enforce_label}'로 설정됨 (호스트 네임스페이스 공유 제한 적용)",
+                            "Evidence": {
+                                "enforce": enforce_label,
+                                "audit": audit_label,
+                                "warn": warn_label
+                            },
+                            "Remediation": "",
+                            "Severity": self.severity
+                        })
                 else:
-                    # PSA 레이블이 없음
+                    # PSA 레이블이 없음 → FAIL (보호 미적용)
                     psa_findings.append({
                         "CheckID": self.id,
-                        "Result": "WARN",
+                        "Result": "FAIL",
                         "ObjectType": "Namespace",
                         "ObjectName": ns_name,
                         "Namespace": ns_name,
-                        "Reason": f"PSA(Pod Security Admission) 레이블이 설정되지 않음 (호스트 네임스페이스 공유 제한 없음)",
+                        "Reason": "PSA(Pod Security Admission) 레이블이 설정되지 않음 (호스트 네임스페이스 공유 제한 없음)",
                         "Evidence": {
                             "enforce": enforce_label,
                             "audit": audit_label,

@@ -26,8 +26,10 @@ class WorkerConfigFilePermissionsCheck(Check):
             cmd += ["--kubeconfig", kubeconfig]
         return subprocess.run(cmd, capture_output=True, text=True)
 
-    def run(self, kubeconfig=''):
-        findings = []
+    def run(self, kubeconfig='', node_scanner_data=None):
+        """
+        node-scanner DaemonSet 로그가 있으면 노드별 파일 권한을 자동 판정합니다.
+        """
         
         try:
             # 노드 목록 가져오기
@@ -52,41 +54,115 @@ class WorkerConfigFilePermissionsCheck(Check):
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
-            
-            # 워커 노드 파일 권한은 노드에 직접 접근해야 확인 가능
-            # 일반적으로는 DaemonSet이나 노드 접근이 필요하므로 WARN 처리
+
+            # node-scanner 기반 자동 판정
+            if isinstance(node_scanner_data, dict) and node_scanner_data.get("available"):
+                ns_nodes = (node_scanner_data.get("nodes") or {})
+                results = []
+
+                def file_ok(fi):
+                    # 권장: owner/group root, mode <= 644
+                    if not fi or fi.get("missing"):
+                        return None, "파일이 없거나 확인 불가"
+                    owner = fi.get("owner")
+                    group = fi.get("group")
+                    mode = fi.get("mode")
+                    issues = []
+                    if owner and owner != "root":
+                        issues.append(f"owner={owner}")
+                    if group and group != "root":
+                        issues.append(f"group={group}")
+                    if isinstance(mode, int) and mode > 644:
+                        issues.append(f"mode={mode}")
+                    if issues:
+                        return False, "; ".join(issues)
+                    # mode를 못 읽었으면(=None) WARN으로
+                    if mode is None:
+                        return None, "mode 확인 불가"
+                    return True, "OK"
+
+                for node in node_items:
+                    node_name = node.get("metadata", {}).get("name", "unknown")
+                    node_info = node.get("status", {}).get("nodeInfo", {})
+                    os_image = node_info.get("osImage", "unknown")
+
+                    nd = ns_nodes.get(node_name) or {}
+                    files = nd.get("files") or {}
+                    node_issues = []
+                    node_warns = []
+                    node_files = {}
+
+                    for path in self.CONFIG_FILES:
+                        fi = files.get(path)
+                        ok, msg = file_ok(fi)
+                        node_files[path] = fi
+                        if ok is False:
+                            node_issues.append(f"{path}({msg})")
+                        elif ok is None:
+                            node_warns.append(f"{path}({msg})")
+
+                    if node_issues:
+                        status = "FAIL"
+                        reason = "워커 노드 설정 파일 권한이 부적절함: " + ", ".join(node_issues)
+                    elif node_warns:
+                        status = "WARN"
+                        reason = "워커 노드 설정 파일 권한 일부를 확인할 수 없음: " + ", ".join(node_warns)
+                    else:
+                        status = "PASS"
+                        reason = "워커 노드 설정 파일 권한이 권장값으로 설정됨"
+
+                    results.append({
+                        "CheckID": self.id,
+                        "Result": status,
+                        "ObjectType": "Node",
+                        "ObjectName": node_name,
+                        "Namespace": "N/A",
+                        "Reason": reason,
+                        "Evidence": {
+                            "node": node_name,
+                            "os_image": os_image,
+                            "pod": nd.get("pod"),
+                            "files": node_files,
+                            "error": nd.get("error"),
+                        },
+                        "Remediation": (
+                            "다음 파일의 소유자/그룹을 root로, 권한을 644 이하로 설정하세요:\n"
+                            "- /var/lib/kubelet/config.yaml\n"
+                            "- /etc/kubernetes/kubelet.conf\n"
+                        )
+                    })
+
+                return results
+
+            # fallback: node-scanner 없음 – 노드별로 직접 확인 안내
+            results = []
             for node in node_items:
                 node_name = node.get("metadata", {}).get("name", "unknown")
                 node_info = node.get("status", {}).get("nodeInfo", {})
                 os_image = node_info.get("osImage", "unknown")
-                
-                findings.append({
+                results.append({
                     "CheckID": self.id,
                     "Result": "WARN",
                     "ObjectType": "Node",
                     "ObjectName": node_name,
                     "Namespace": "N/A",
-                    "Reason": "워커 노드 설정 파일 권한을 자동으로 확인할 수 없음 (노드에 직접 접근 필요)",
+                    "Reason": "워커 노드 설정 파일 권한을 자동으로 확인할 수 없음 (node-scanner DaemonSet 필요)",
                     "Evidence": {
                         "node": node_name,
                         "os_image": os_image,
-                        "files_to_check": self.CONFIG_FILES
+                        "files_to_check": self.CONFIG_FILES,
+                        "node_scanner_error": (node_scanner_data or {}).get("error") if isinstance(node_scanner_data, dict) else None
                     },
                     "Remediation": (
-                        f"노드 {node_name}에 직접 접근하여 다음 파일들의 권한을 확인하세요:\n\n" +
-                        "\n".join(f"- {f}" for f in self.CONFIG_FILES) +
-                        "\n\n권장 설정:\n"
-                        "- 소유자: root\n"
-                        "- 소유 그룹: root\n"
-                        "- 권한: 644 (rw-r--r--)\n\n"
-                        "확인 명령:\n"
+                        "노드에서 다음 명령으로 파일 권한을 확인/수정하세요:\n"
                         "ls -al /var/lib/kubelet/config.yaml\n"
-                        "ls -al /etc/kubernetes/kubelet.conf\n\n"
-                        "수정 명령:\n"
+                        "ls -al /etc/kubernetes/kubelet.conf\n"
                         "sudo chown root:root <file>\n"
-                        "sudo chmod 644 <file>"
+                        "sudo chmod 644 <file>\n"
                     )
                 })
+
+            return results
             
         except Exception as e:
             return [{
@@ -96,5 +172,4 @@ class WorkerConfigFilePermissionsCheck(Check):
                 "Evidence": {"error": str(e), "trace": traceback.format_exc()},
                 "Remediation": "kubectl get nodes 명령을 직접 실행하여 확인하세요"
             }]
-        
-        return findings
+

@@ -51,22 +51,39 @@ def calculate_score(results: List[Dict], checks: List) -> Dict:
         points = getattr(check, "points", 0)
         check_points[check_id] = points
         total_max_points += points
-    
+
     if total_max_points == 0:
         return {"score": 0, "max_score": 0, "percentage": 0, "passed": 0, "failed": 0, "error": 0, "total": len(checks)}
-    
+
+    # 동일 CheckID에 대해 노드별로 여러 결과가 있을 수 있으므로
+    # 점수 계산은 "체크별 최악 상태(FAIL > ERROR > WARN > PASS)"만 반영
+    status_rank = {
+        "PASS": 1,
+        "WARN": 2,
+        "FAIL": 3,
+        "ERROR": 4,
+    }
+    worst_status_per_check: Dict[str, str] = {}
+    for result in results:
+        check_id = result.get("CheckID", "UNKNOWN")
+        status = result.get("Result", "UNKNOWN")
+        if check_id not in worst_status_per_check:
+            worst_status_per_check[check_id] = status
+        else:
+            prev = worst_status_per_check[check_id]
+            if status_rank.get(status, 0) > status_rank.get(prev, 0):
+                worst_status_per_check[check_id] = status
+
     earned_points = 0
     failed_count = 0
     error_count = 0
     pass_count = 0
     warn_count = 0
     
-    # 결과별로 점수 계산
-    for result in results:
-        check_id = result.get("CheckID", "UNKNOWN")
-        status = result.get("Result", "UNKNOWN")
+    # 체크별 최악 상태 기준으로 점수 계산
+    for check_id, status in worst_status_per_check.items():
         points = check_points.get(check_id, 0)
-        
+
         if status == "PASS":
             earned_points += points
             pass_count += 1
@@ -122,6 +139,14 @@ def print_summary(results: List[Dict], checks: List):
 def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
     checks = load_checks()
     results = []
+
+    # node-scanner DaemonSet이 있으면 한 번만 수집해서 재사용
+    node_scanner_data = None
+    try:
+        from scanner.node_scanner import collect_node_scanner_data
+        node_scanner_data = collect_node_scanner_data(kubeconfig=kubeconfig)
+    except Exception:
+        node_scanner_data = None
     
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
         futures = {}
@@ -131,15 +156,18 @@ def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
                 import inspect
                 sig = inspect.signature(c.run)
                 params = sig.parameters
-                
-                # k8s_client가 필요하면 클라이언트 생성
+
+                kwargs = {}
                 if 'k8s_client' in params:
-                    k8s_client = make_k8s_client()
-                    futures[ex.submit(c.run, k8s_client)] = c
-                elif 'kubeconfig' in params:
-                    futures[ex.submit(c.run, kubeconfig)] = c
+                    kwargs['k8s_client'] = make_k8s_client()
+                if 'kubeconfig' in params:
+                    kwargs['kubeconfig'] = kubeconfig
+                if 'node_scanner_data' in params:
+                    kwargs['node_scanner_data'] = node_scanner_data
+
+                if kwargs:
+                    futures[ex.submit(c.run, **kwargs)] = c
                 else:
-                    # 파라미터 없으면 그냥 실행
                     futures[ex.submit(c.run)] = c
             except Exception as e:
                 # 체크 로드 실패는 무시하고 계속
@@ -161,27 +189,10 @@ def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
             else:
                 results.append(res)
     
-    # 체크당 1개의 결과만 사용 (중복 제거)
-    unique_results = {}
-    for result in results:
-        check_id = result.get("CheckID", "UNKNOWN")
-        # 같은 CheckID가 여러 번 나올 수 있으므로 FAIL > ERROR > PASS 우선순위
-        if check_id not in unique_results:
-            unique_results[check_id] = result
-        else:
-            existing = unique_results[check_id]
-            existing_status = existing.get("Result", "")
-            current_status = result.get("Result", "")
-            # FAIL이면 무조건 FAIL 유지, ERROR면 FAIL이면 교체
-            if current_status == "FAIL" or (current_status == "ERROR" and existing_status == "PASS"):
-                unique_results[check_id] = result
-    
-    # 고유한 체크 결과만 사용
-    unique_results_list = list(unique_results.values())
-    
-    # 체크 정보를 결과에 추가 (권고 사항 포함)
+    # 여러 노드에 대한 결과가 있을 수 있으므로,
+    # 결과 리스트는 그대로 유지하고 각 결과에 메타데이터만 채운다.
     check_info_map = {check.id: check.get_info() for check in checks}
-    for result in unique_results_list:
+    for result in results:
         check_id = result.get("CheckID", "UNKNOWN")
         if check_id in check_info_map:
             info = check_info_map[check_id]
@@ -195,8 +206,8 @@ def run_all_checks(concurrency: int = 6, kubeconfig: str = ''):
     payload = {
         "ScanID": f"scan-{os.urandom(4).hex()}",
         "Timestamp": __import__("datetime").datetime.now().__str__(),
-        "Results": unique_results_list,
-        "Summary": calculate_score(unique_results_list, checks)
+        "Results": results,
+        "Summary": calculate_score(results, checks)
     }
     return payload
 
