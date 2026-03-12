@@ -5,7 +5,7 @@ import subprocess, json
 
 class APIServerAuthorizationCheck(Check):
     id = "CHK-M-API-004"
-    name = "API Server authorization mode (AlwaysAllow) 검사"
+    name = "인가 모드"
     category = "ControlPlane"
     severity = "Critical"
     points = 7
@@ -67,10 +67,13 @@ class APIServerAuthorizationCheck(Check):
         if not apiserver_pods:
             return [{
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-system에서 kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 수 있음 또는 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-apiserver 파드를 찾을 수 없음 (관리형 컨트롤플레인 또는 검사 대상 없음)",
                 "Evidence": {"pod_count": len(pods.get("items", []))},
-                "Remediation": "컨트롤플레인 노드 또는 클라우드 제공자 문서에서 authorization-mode 설정 확인"
+                "Remediation": "자체 운영 클러스터면 kube-system에 kube-apiserver 파드 존재 여부 확인"
             }]
 
         findings = []
@@ -92,13 +95,13 @@ class APIServerAuthorizationCheck(Check):
             if not modes:
                 findings.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
+                    "Result": "FAIL",
                     "ObjectType": "Pod",
                     "ObjectName": name,
                     "Namespace": "kube-system",
-                    "Reason": "--authorization-mode 플래그 없음(기본값에 따라 AlwaysAllow 일 수 있음). 명시적으로 RBAC 사용 권장",
+                    "Reason": "--authorization-mode 플래그 없음 (기본값 AlwaysAllow로 인가 우회 가능)",
                     "Evidence": {"args": args_list},
-                    "Remediation": "매니페스트에 --authorization-mode=RBAC (또는 Node,RBAC 등)을 명시적으로 설정"
+                    "Remediation": "매니페스트에 --authorization-mode=Node,RBAC 등 명시"
                 })
                 continue
 

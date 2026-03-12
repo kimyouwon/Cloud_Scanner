@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class APIServerAnonymousCheck(Check):
     id = "CHK-M-API-001"
-    name = "API Server 익명 접근 및 service-account-lookup 검사"
+    name = "비인증 접근 비활성화"
     category = "ControlPlane"
     severity = "Critical"
     points = 7
@@ -66,13 +66,15 @@ class APIServerAnonymousCheck(Check):
                 apiserver_pods.append(it)
 
         if not apiserver_pods:
-            # 관리형 컨트롤플레인 또는 권한 부족 가능
             return [{
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-system에서 kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 수 있음 또는 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-apiserver 파드를 찾을 수 없음 (관리형 컨트롤플레인 또는 검사 대상 없음)",
                 "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
-                "Remediation": "관리형 클러스터이면 클라우드 콘솔/문서 확인. 자체관리라면 컨트롤플레인에서 매니페스트 확인"
+                "Remediation": "자체 운영 클러스터면 kube-system에 kube-apiserver 파드 존재 여부 확인"
             }]
 
         findings = []
@@ -129,18 +131,16 @@ class APIServerAnonymousCheck(Check):
                 })
                 continue
 
-            # anonymous unset (플래그 없음) -> WARN (기본값 확인 필요)
             if anon_status == "unset":
-                # if sa lookup disabled or unset -> 더 위험 -> WARN
                 findings.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
+                    "Result": "FAIL",
                     "ObjectType": "Pod",
                     "ObjectName": pod_name,
                     "Namespace": "kube-system",
-                    "Reason": "--anonymous-auth 플래그가 없음(기본값에 따라 익명 접근 허용일 수 있음). 확인 권장",
+                    "Reason": "--anonymous-auth 플래그가 없음 (기본값 true로 익명 접근 허용 가능)",
                     "Evidence": {"args": args_list, "service-account-lookup": sa_lookup_val},
-                    "Remediation": "명시적으로 --anonymous-auth=false 설정 및 --service-account-lookup=true 추가 권장"
+                    "Remediation": "명시적으로 --anonymous-auth=false 설정 및 --service-account-lookup=true 추가"
                 })
                 continue
 
@@ -158,16 +158,15 @@ class APIServerAnonymousCheck(Check):
                     "Remediation": ""
                 })
             else:
-                # sa lookup disabled or unset -> WARN (권장: true)
                 findings.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
+                    "Result": "FAIL",
                     "ObjectType": "Pod",
                     "ObjectName": pod_name,
                     "Namespace": "kube-system",
                     "Reason": f"--anonymous-auth=false 이지만 --service-account-lookup 값이 안전하지 않음({sa_status})",
                     "Evidence": {"args": args_list},
-                    "Remediation": "가능하면 --service-account-lookup=true 로 설정하여 서비스어카운트 토큰 검증을 활성화하세요"
+                    "Remediation": "--service-account-lookup=true 로 설정하여 서비스어카운트 토큰 검증을 활성화하세요"
                 })
 
         return findings

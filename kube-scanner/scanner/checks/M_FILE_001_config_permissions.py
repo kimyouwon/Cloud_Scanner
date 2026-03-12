@@ -5,7 +5,7 @@ import subprocess, json, traceback, stat, os
 
 class ConfigFilePermissionsCheck(Check):
     id = "CHK-M-FILE-001"
-    name = "환경설정 파일 권한 설정 검사"
+    name = "(마스터 노드) 설정 파일 권한"
     category = "ControlPlane"
     severity = "High"
     points = 6
@@ -284,11 +284,11 @@ class ConfigFilePermissionsCheck(Check):
             if missing_files:
                 findings.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
+                    "Result": "ERROR",
                     "ObjectType": "File",
                     "ObjectName": "Multiple",
                     "Namespace": "N/A",
-                    "Reason": f"다음 파일들을 확인할 수 없음: {', '.join(missing_files)}",
+                    "Reason": f"다음 파일들을 확인할 수 없음: {', '.join(missing_files)} (검사 불가)",
                     "Evidence": {"missing_files": missing_files},
                     "Remediation": (
                         "컨트롤플레인 노드에 직접 접근하여 다음 파일들의 권한을 확인하세요:\n" +
@@ -316,8 +316,7 @@ class ConfigFilePermissionsCheck(Check):
                     "Remediation": ""
                 })
             elif not failed_files and missing_files:
-                # 일부 파일만 확인 불가 (WARN만 있음)
-                pass  # 이미 WARN 추가됨
+                pass  # missing_files에 대한 FAIL 이미 추가됨
             
         except Exception as e:
             return [{
@@ -329,14 +328,13 @@ class ConfigFilePermissionsCheck(Check):
             }]
         
         if not findings:
-            # 아무것도 확인할 수 없음
             findings.append({
                 "CheckID": self.id,
-                "Result": "WARN",
+                "Result": "ERROR",
                 "ObjectType": "Cluster",
                 "ObjectName": "ALL",
                 "Namespace": "N/A",
-                "Reason": "컨트롤플레인 파드를 찾을 수 없어 파일 권한을 확인할 수 없음",
+                "Reason": "컨트롤플레인 파드를 찾을 수 없거나 kubeadm 환경이 아님 (검사 불가)",
                 "Evidence": {},
                 "Remediation": (
                     "컨트롤플레인 노드에 직접 접근하여 다음 파일들의 권한을 확인하세요:\n" +

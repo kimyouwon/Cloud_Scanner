@@ -14,8 +14,8 @@ spec:
       labels:
         app: node-scanner
     spec:
-      hostPID: true
-      hostNetwork: false
+      hostPID: true      # 노드 프로세스 확인용
+      hostNetwork: true # 노드 네트워크 확인용
       tolerations:
         - operator: "Exists"
       containers:
@@ -23,7 +23,7 @@ spec:
           image: busybox:1.36
           imagePullPolicy: IfNotPresent
           securityContext:
-            privileged: true
+            privileged: true # 노드 파일 시스템 접근 권한
           command:
             - /bin/sh
             - -c
@@ -74,7 +74,12 @@ spec:
               }
 
               emit_kubelet() {
-                cfg="/host/var/lib/kubelet/config.yaml"
+                # 전용 volumeMount 경로 우선, 없으면 hostPath 디렉터리 경로 사용
+                if [ -r /etc/kubernetes/kubelet-config.yaml ]; then
+                  cfg="/etc/kubernetes/kubelet-config.yaml"
+                else
+                  cfg="/host/var/lib/kubelet/config.yaml"
+                fi
                 if [ ! -r "$cfg" ]; then
                   emit_kv NODE_SCANNER_KUBELET "present=false"
                   return 0
@@ -105,6 +110,9 @@ spec:
 
               emit_kv NODE_SCANNER_NODE "name=${NODE_NAME}"
 
+              # 인가/인증/TLS 체크용으로 kubelet 설정을 먼저 출력 (이후 emit_file 실패해도 로그에 포함됨)
+              emit_kubelet
+
               # Kubelet / control-plane 관련 주요 파일 권한
               emit_file /var/lib/kubelet/config.yaml
               emit_file /etc/kubernetes/kubelet.conf
@@ -126,9 +134,6 @@ spec:
                 done
               fi
 
-              # kubelet 설정 요약
-              emit_kubelet
-
               # 대표적인 커널 파라미터 값
               emit_sysctl net.ipv4.ip_forward
               emit_sysctl net.bridge.bridge-nf-call-iptables
@@ -138,6 +143,9 @@ spec:
               # 로그가 남아있도록 컨테이너는 무한 대기
               sleep 3600d
           volumeMounts:
+            - name: kubelet-config
+              mountPath: /etc/kubernetes/kubelet-config.yaml
+              readOnly: true
             - name: host-etc-kubernetes
               mountPath: /host/etc/kubernetes
               readOnly: true
@@ -148,6 +156,10 @@ spec:
               mountPath: /host/proc
               readOnly: true
       volumes:
+        - name: kubelet-config
+          hostPath:
+            path: /var/lib/kubelet/config.yaml
+            type: File
         - name: host-etc-kubernetes
           hostPath:
             path: /etc/kubernetes

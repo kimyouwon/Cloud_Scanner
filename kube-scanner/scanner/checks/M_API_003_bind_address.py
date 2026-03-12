@@ -5,7 +5,7 @@ import subprocess, json
 
 class ControlPlaneBindAddressCheck(Check):
     id = "CHK-M-API-003"
-    name = "Control Plane bind-address (Scheduler / ControllerManager) 검사"
+    name = "서비스 외부 접근 비활성화"
     category = "ControlPlane"
     severity = "High"
     points = 7
@@ -76,16 +76,15 @@ class ControlPlaneBindAddressCheck(Check):
 
                     bind_val = self._extract_bind_addr(args_list)
                     if bind_val is None:
-                        # 플래그 없음 -> WARN: 기본값이 안전할 수 있으나 확인 권고
                         findings.append({
                             "CheckID": self.id,
-                            "Result": "WARN",
+                            "Result": "FAIL",
                             "ObjectType": "Pod",
                             "ObjectName": name,
                             "Namespace": "kube-system",
-                            "Reason": "--bind-address 플래그가 없음 (기본값 확인 필요)",
+                            "Reason": "--bind-address 플래그가 없음 (명시적 설정 필요)",
                             "Evidence": {"args": args_list},
-                            "Remediation": "매니페스트(/etc/kubernetes/manifests/...)에서 --bind-address를 명시적으로 설정(권장: 127.0.0.1 또는 내부 전용 IP)"
+                            "Remediation": "매니페스트에서 --bind-address=127.0.0.1 (또는 내부 전용 IP) 명시"
                         })
                     else:
                         # 값이 안전한지 검사
@@ -130,21 +129,23 @@ class ControlPlaneBindAddressCheck(Check):
                             else:
                                 findings.append({
                                     "CheckID": self.id,
-                                    "Result": "WARN",
+                                    "Result": "FAIL",
                                     "ObjectType": "Pod",
                                     "ObjectName": name,
                                     "Namespace": "kube-system",
-                                    "Reason": f"--bind-address={bind_val} (검토 필요: 외부 접근 허용 여부 확인)",
+                                    "Reason": f"--bind-address={bind_val} (외부 노출 가능; 127.0.0.1 또는 사설 IP 권장)",
                                     "Evidence": {"args": args_list},
-                                    "Remediation": "바인딩 주소가 공인 IP이면 방화벽/접근제어로 외부 접근 차단 또는 localhost로 변경"
+                                    "Remediation": "방화벽/접근제어로 외부 접근 차단 또는 --bind-address=127.0.0.1 로 변경"
                                 })
         if not findings:
-            # 관련 파드 자체를 못찾은 경우 (managed control plane 등)
             return [{
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-scheduler 또는 kube-controller-manager 파드가 kube-system에서 발견되지 않음 (관리형 컨트롤플레인 혹은 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-scheduler 또는 kube-controller-manager 파드를 찾을 수 없음 (검사 대상 없음)",
                 "Evidence": {"pod_count": len(pods.get("items", []))},
-                "Remediation": "컨트롤플레인 매니페스트나 클라우드 문서 확인"
+                "Remediation": "자체 운영 클러스터면 kube-system에 해당 파드 존재 여부 확인"
             }]
         return findings

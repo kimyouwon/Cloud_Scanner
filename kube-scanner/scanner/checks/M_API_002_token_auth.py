@@ -5,7 +5,7 @@ import subprocess, json
 
 class APIServerTokenAuthCheck(Check):
     id = "CHK-M-API-002"
-    name = "API Server --token-auth-file (정적 토큰) 사용 검사"
+    name = "취약한 인증 비활성화"
     category = "ControlPlane"
     severity = "Critical"
     points = 7
@@ -50,13 +50,15 @@ class APIServerTokenAuthCheck(Check):
                 apiserver_pods.append(it)
 
         if not apiserver_pods:
-            # 관리형 컨트롤플레인인지 또는 권한 부족
             return [{
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-system에서 kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 가능성 또는 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-apiserver 파드를 찾을 수 없음 (관리형 컨트롤플레인 또는 검사 대상 없음)",
                 "Evidence": {"pod_count": len(pods.get("items", []))},
-                "Remediation": "관리형 클러스터인지 확인하고, 컨트롤플레인 접근 권한이 있다면 노드의 kube-apiserver 매니페스트를 점검"
+                "Remediation": "자체 운영 클러스터면 kube-system에 kube-apiserver 파드 존재 여부 확인"
             }]
 
         findings = []

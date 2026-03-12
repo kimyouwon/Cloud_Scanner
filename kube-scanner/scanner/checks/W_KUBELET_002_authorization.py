@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class KubeletAuthorizationCheck(Check):
     id = "CHK-W-KUBELET-002"
-    name = "Kubelet 인가 설정 검사"
+    name = "인가 제어"
     category = "Kubelet"
     severity = "High"
     points = 2
@@ -62,8 +62,8 @@ class KubeletAuthorizationCheck(Check):
             if not node_items:
                 return [{
                     "CheckID": self.id,
-                    "Result": "WARN",
-                    "Reason": "노드를 찾을 수 없음",
+                    "Result": "ERROR",
+                    "Reason": "노드가 없어 검사할 수 없음",
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
@@ -81,20 +81,47 @@ class KubeletAuthorizationCheck(Check):
                     nd = ns_nodes.get(node_name) or {}
                     kubelet = nd.get("kubelet") or {}
                     present = kubelet.get("present") == "true"
-                    mode = kubelet.get("authorization_mode", "unknown")
+                    mode = (kubelet.get("authorization_mode") or "").strip() or "unknown"
 
                     if not present:
-                        status = "PASS"
-                        reason = "kubelet config를 읽을 수 없음; 기본 인가 모드(Webhook) 적용으로 간주"
+                        status = "ERROR"
+                        reason = (
+                            f"[{node_name}] 노드에서 kubelet 설정 파일(/var/lib/kubelet/config.yaml)을 읽을 수 없습니다. "
+                            "해당 경로가 없거나 node-scanner Pod가 hostPath로 마운트하지 못했을 수 있습니다. "
+                            "Kind/Minikube 등은 kubelet config 경로가 다를 수 있습니다."
+                        )
+                        remediation = (
+                            "1) node-scanner DaemonSet 배포: kubectl apply -f k8s/node-scanner-daemonset.yaml\n"
+                            "2) 노드에서 설정 경로 확인: 해당 노드에 /var/lib/kubelet/config.yaml 존재 여부 및 읽기 권한 확인\n"
+                            "3) kubelet이 다른 경로를 쓰는 경우 node-scanner DaemonSet의 hostPath와 emit_kubelet() 경로를 환경에 맞게 수정"
+                        )
                     elif mode == "AlwaysAllow":
                         status = "FAIL"
                         reason = "Kubelet authorization mode가 AlwaysAllow (보안 위험)"
+                        remediation = (
+                            "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 "
+                            "AlwaysAllow 사용을 피하세요.\n예: authorization:\n  mode: Webhook\n"
+                        )
                     elif mode == "Webhook":
                         status = "PASS"
                         reason = "Kubelet authorization mode가 Webhook"
-                    else:
+                        remediation = ""
+                    elif mode == "unknown" and present:
+                        # config는 읽었으나 authorization.mode가 없음 → Kubernetes 기본값(Webhook) 적용
                         status = "PASS"
-                        reason = f"Kubelet authorization mode 확인됨: {mode} (기본값 Webhook 적용으로 간주)"
+                        reason = "Kubelet config 확인됨. authorization.mode 미기재로 Kubernetes 기본값(Webhook) 적용"
+                        remediation = ""
+                    else:
+                        status = "ERROR"
+                        reason = (
+                            f"[{node_name}] node-scanner 로그에서 Kubelet 인가 모드(authorization_mode)를 확인할 수 없습니다. "
+                            "DaemonSet 로그가 수집되지 않았거나, config에 authorization.mode가 없을 수 있습니다."
+                        )
+                        remediation = (
+                            "1) node-scanner Pod 로그 확인: kubectl logs -n kube-system -l app=node-scanner --tail=200\n"
+                            "2) NODE_SCANNER_KUBELET authorization_mode= 항목이 있는지 확인\n"
+                            "3) 없으면 k8s/node-scanner-daemonset.yaml 적용 후 Pod가 정상 기동했는지 확인"
+                        )
 
                     results.append({
                         "CheckID": self.id,
@@ -111,12 +138,9 @@ class KubeletAuthorizationCheck(Check):
                             "kubelet_summary": kubelet,
                             "error": nd.get("error"),
                         },
-                        "Remediation": (
+                        "Remediation": remediation if status != "PASS" else (
                             "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 "
-                            "AlwaysAllow 사용을 피하세요.\n"
-                            "예:\n"
-                            "authorization:\n"
-                            "  mode: Webhook\n"
+                            "AlwaysAllow 사용을 피하세요.\n예: authorization:\n  mode: Webhook\n"
                         )
                     })
 
@@ -137,8 +161,11 @@ class KubeletAuthorizationCheck(Check):
                     status = "FAIL"
                     reason = "Kubelet authorization mode가 AlwaysAllow (보안 위험)"
                 else:
-                    status = "PASS"
-                    reason = "kubelet 기본 인가 모드(Webhook) 적용으로 간주 (Kubernetes 1.14+ 기본값)"
+                    status = "ERROR"
+                    reason = (
+                        "ConfigMap(kube-system 내 kubelet 관련)에서 인가 설정을 찾을 수 없습니다. "
+                        "node-scanner DaemonSet을 배포하면 노드별 config 파일을 직접 읽어 검사할 수 있습니다."
+                    )
 
                 results.append({
                     "CheckID": self.id,
@@ -153,7 +180,10 @@ class KubeletAuthorizationCheck(Check):
                         "authorization_mode": auth_check.get("mode"),
                         "error": auth_check.get("error"),
                     },
-                    "Remediation": "" if status == "PASS" else "kubelet 설정에서 authorization.mode를 Webhook으로 설정하세요."
+                    "Remediation": "" if status == "PASS" else (
+                        "kubelet 설정에서 authorization.mode를 Webhook으로 설정하세요. "
+                        "또는 node-scanner DaemonSet을 배포 후 다시 스캔하세요: kubectl apply -f k8s/node-scanner-daemonset.yaml"
+                    )
                 })
 
             return results

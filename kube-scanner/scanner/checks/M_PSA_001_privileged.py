@@ -5,7 +5,7 @@ import traceback
 
 class PrivilegedCheck(Check):
     id = "CHK-M-PSA-001"
-    name = "Container privileged 검사"
+    name = "컨테이너 권한 제어"
     category = "Pod"
     severity = "High"
     points = 6

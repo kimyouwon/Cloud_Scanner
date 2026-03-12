@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class KubeletKernelCheck(Check):
     id = "CHK-W-KUBELET-004"
-    name = "Kubelet 커널 파라미터 설정 검사"
+    name = "커널 파라미터 구성"
     category = "Kubelet"
     severity = "Medium"
     points = 2
@@ -44,8 +44,8 @@ class KubeletKernelCheck(Check):
             if not node_items:
                 return [{
                     "CheckID": self.id,
-                    "Result": "WARN",
-                    "Reason": "노드를 찾을 수 없음",
+                    "Result": "ERROR",
+                    "Reason": "노드가 없어 검사할 수 없음",
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
@@ -81,8 +81,11 @@ class KubeletKernelCheck(Check):
                         status = "FAIL"
                         reason = "커널 파라미터가 권장값과 다름"
                     elif missing:
-                        status = "WARN"
-                        reason = f"커널 파라미터 일부를 확인할 수 없음: {', '.join(missing)}"
+                        status = "ERROR"
+                        reason = (
+                            f"[{node_name}] 노드에서 다음 커널 파라미터를 읽을 수 없음: {', '.join(missing)}. "
+                            "node-scanner가 /proc을 hostPath로 마운트했는지, 해당 sysctl 경로가 존재하는지 확인하세요."
+                        )
                     else:
                         status = "PASS"
                         reason = "커널 파라미터가 권장값으로 설정됨"
@@ -121,11 +124,14 @@ class KubeletKernelCheck(Check):
                 kernel_version = node_info.get("kernelVersion", "unknown")
                 results.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
+                    "Result": "ERROR",
                     "ObjectType": "Node",
                     "ObjectName": node_name,
                     "Namespace": "N/A",
-                    "Reason": "커널 파라미터를 자동으로 확인할 수 없음 (node-scanner DaemonSet 필요)",
+                    "Reason": (
+                        f"[{node_name}] node-scanner DaemonSet이 없거나 로그를 수집하지 못해 커널 파라미터를 확인할 수 없습니다. "
+                        "DaemonSet 배포 후 재검사하세요."
+                    ),
                     "Evidence": {
                         "node": node_name,
                         "kernel_version": kernel_version,
@@ -133,10 +139,8 @@ class KubeletKernelCheck(Check):
                         "node_scanner_error": (node_scanner_data or {}).get("error") if isinstance(node_scanner_data, dict) else None
                     },
                     "Remediation": (
-                        "노드에 직접 접속하여 다음을 확인/설정하세요:\n"
-                        "sysctl net.ipv4.ip_forward\n"
-                        "sysctl net.bridge.bridge-nf-call-iptables\n"
-                        "sysctl kernel.panic_on_oops\n"
+                        "1) node-scanner 배포: kubectl apply -f k8s/node-scanner-daemonset.yaml\n"
+                        "2) 노드에서 직접 확인: sysctl net.ipv4.ip_forward, net.bridge.bridge-nf-call-iptables, kernel.panic_on_oops\n"
                     )
                 })
 

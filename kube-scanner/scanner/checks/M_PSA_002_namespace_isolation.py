@@ -7,7 +7,7 @@ import traceback
 
 class NamespaceIsolationCheck(Check):
     id = "CHK-M-PSA-002"
-    name = "네임스페이스 공유 금지 검사 (hostNetwork/hostPID/hostIPC)"
+    name = "네임스페이스 공유 비활성화"
     category = "Pod"
     severity = "High"
     points = 6

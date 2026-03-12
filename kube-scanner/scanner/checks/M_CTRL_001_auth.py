@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class ControllerAuthCheck(Check):
     id = "CHK-M-CTRL-001"
-    name = "Controller 인증 제어 (ServiceAccount credentials 사용 및 private key 설정) 검사"
+    name = "인증 제어"
     category = "ControlPlane"
     severity = "High"
     points = 7
@@ -73,13 +73,15 @@ class ControllerAuthCheck(Check):
                 ctrl_pods.append(it)
 
         if not ctrl_pods:
-            # 관리형 컨트롤플레인일 가능성 또는 권한 부족
             return [{
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-system에서 kube-controller-manager 파드를 찾지 못함 (관리형 컨트롤플레인 혹은 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-controller-manager 파드를 찾을 수 없음 (관리형 컨트롤플레인 또는 검사 대상 없음)",
                 "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
-                "Remediation": "관리형 클러스터면 제공자 문서 확인. 자체 관리면 control-plane 노드의 매니페스트 확인"
+                "Remediation": "자체 운영 클러스터면 kube-system에 kube-controller-manager 파드 존재 여부 확인"
             }]
 
         findings = []
@@ -101,7 +103,7 @@ class ControllerAuthCheck(Check):
             private_key_val = self._extract_flag(args_list, "--service-account-private-key-file")
 
             # 판단 로직:
-            # - use-service-account-credentials: 명시적으로 true / present => PASS; false => FAIL; unset => WARN
+            # - use-service-account-credentials: true/present => PASS; false/미설정/불명확 => FAIL
             # - private-key-file: 값(경로)이 있어야 PASS; absent/null => FAIL; present but empty => FAIL
             # 결과 요약 메시지 구성
             reasons = []
@@ -110,20 +112,16 @@ class ControllerAuthCheck(Check):
             # use-service-account-credentials 판정
             if use_svcacct_val is None:
                 reasons.append("--use-service-account-credentials 플래그가 없음 (권장: true)")
-                result = "WARN" if result != "FAIL" else "FAIL"
+                result = "FAIL"
             else:
-                # present 또는 값이 있는 경우 허용/불허
                 if use_svcacct_val in ("true", "1", "yes", "present"):
-                    # ok
                     pass
                 elif use_svcacct_val in ("false", "0", "no"):
                     reasons.append("--use-service-account-credentials=false 로 설정되어 있음 (권장: true)")
                     result = "FAIL"
                 else:
-                    # 알 수 없는 값은 WARN
                     reasons.append(f"--use-service-account-credentials 값이 불명확함: {use_svcacct_val}")
-                    if result != "FAIL":
-                        result = "WARN"
+                    result = "FAIL"
 
             # private key 파일 판정
             if private_key_val is None or private_key_val == "present":

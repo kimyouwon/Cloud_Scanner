@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class WorkerConfigFilePermissionsCheck(Check):
     id = "CHK-W-FILE-001"
-    name = "워커 노드 환경설정 파일 권한 설정 검사"
+    name = "(워커 노드) 설정 파일 권한"
     category = "File"
     severity = "High"
     points = 2
@@ -49,8 +49,8 @@ class WorkerConfigFilePermissionsCheck(Check):
             if not node_items:
                 return [{
                     "CheckID": self.id,
-                    "Result": "WARN",
-                    "Reason": "노드를 찾을 수 없음",
+                    "Result": "ERROR",
+                    "Reason": "노드가 없어 검사할 수 없음",
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
@@ -105,8 +105,11 @@ class WorkerConfigFilePermissionsCheck(Check):
                         status = "FAIL"
                         reason = "워커 노드 설정 파일 권한이 부적절함: " + ", ".join(node_issues)
                     elif node_warns:
-                        status = "WARN"
-                        reason = "워커 노드 설정 파일 권한 일부를 확인할 수 없음: " + ", ".join(node_warns)
+                        status = "ERROR"
+                        reason = (
+                            f"[{node_name}] 노드에서 다음 파일이 없거나 node-scanner가 권한 정보를 읽지 못함: "
+                            + ", ".join(node_warns) + ". hostPath 마운트 경로(/etc/kubernetes, /var/lib/kubelet)를 확인하세요."
+                        )
                     else:
                         status = "PASS"
                         reason = "워커 노드 설정 파일 권한이 권장값으로 설정됨"
@@ -142,11 +145,14 @@ class WorkerConfigFilePermissionsCheck(Check):
                 os_image = node_info.get("osImage", "unknown")
                 results.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
+                    "Result": "ERROR",
                     "ObjectType": "Node",
                     "ObjectName": node_name,
                     "Namespace": "N/A",
-                    "Reason": "워커 노드 설정 파일 권한을 자동으로 확인할 수 없음 (node-scanner DaemonSet 필요)",
+                    "Reason": (
+                        f"[{node_name}] node-scanner DaemonSet이 없거나 로그를 수집하지 못해 설정 파일 권한을 확인할 수 없습니다. "
+                        "DaemonSet 배포 후 재검사하세요."
+                    ),
                     "Evidence": {
                         "node": node_name,
                         "os_image": os_image,
@@ -154,11 +160,8 @@ class WorkerConfigFilePermissionsCheck(Check):
                         "node_scanner_error": (node_scanner_data or {}).get("error") if isinstance(node_scanner_data, dict) else None
                     },
                     "Remediation": (
-                        "노드에서 다음 명령으로 파일 권한을 확인/수정하세요:\n"
-                        "ls -al /var/lib/kubelet/config.yaml\n"
-                        "ls -al /etc/kubernetes/kubelet.conf\n"
-                        "sudo chown root:root <file>\n"
-                        "sudo chmod 644 <file>\n"
+                        "1) node-scanner 배포: kubectl apply -f k8s/node-scanner-daemonset.yaml\n"
+                        "2) 노드에서 파일 권한 확인/수정: ls -al /var/lib/kubelet/config.yaml /etc/kubernetes/kubelet.conf ; chown root:root ; chmod 644\n"
                     )
                 })
 

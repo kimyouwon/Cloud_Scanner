@@ -9,7 +9,7 @@ except ImportError:
 
 class EtcdEncryptionCheck(Check):
     id = "CHK-M-ETCD-001"
-    name = "etcd 암호화 적용 검사"
+    name = "암호화 활성화"
     category = "ControlPlane"
     severity = "Critical"
     points = 8
@@ -179,13 +179,15 @@ class EtcdEncryptionCheck(Check):
                 apiserver_pods.append(it)
 
         if not apiserver_pods:
-            # 관리형 컨트롤플레인 또는 권한 부족 가능
             return [{
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-system에서 kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 수 있음 또는 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-apiserver 파드를 찾을 수 없음 (관리형 컨트롤플레인 또는 검사 대상 없음)",
                 "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
-                "Remediation": "관리형 클러스터이면 클라우드 콘솔/문서 확인. 자체관리라면 컨트롤플레인에서 매니페스트 확인"
+                "Remediation": "자체 운영 클러스터면 kube-system에 kube-apiserver 파드 존재 여부 확인"
             }]
 
         findings = []
@@ -260,22 +262,18 @@ class EtcdEncryptionCheck(Check):
                             )
                         })
                     else:
-                        # unknown 상태
                         findings.append({
                             "CheckID": self.id,
-                            "Result": "WARN",
+                            "Result": "ERROR",
                             "ObjectType": "Pod",
                             "ObjectName": pod_name,
                             "Namespace": "kube-system",
-                            "Reason": f"--encryption-provider-config 설정됨. {config_analysis.get('reason')}",
+                            "Reason": f"--encryption-provider-config 설정됨. {config_analysis.get('reason')} (설정 내용 자동 확인 불가)",
                             "Evidence": {
                                 "args": args_list,
                                 "encryption_provider_config_path": encryption_config
                             },
-                            "Remediation": (
-                                f"컨트롤플레인 노드에서 설정 파일({encryption_config})을 직접 확인하여 "
-                                "암호화 방식이 aescbc, aesgcm, secretbox, kms 중 하나로 설정되어 있는지 확인하세요."
-                            )
+                            "Remediation": "컨트롤플레인 노드에서 설정 파일 내용을 직접 확인하세요"
                         })
                 else:
                     # 설정 파일 내용을 읽을 수 없음 (파일이 노드에 직접 있거나 접근 불가)
@@ -310,14 +308,13 @@ class EtcdEncryptionCheck(Check):
                             "Remediation": ""
                         })
                     else:
-                        # 경로가 유효하지 않으면 WARN
                         findings.append({
                             "CheckID": self.id,
-                            "Result": "WARN",
+                            "Result": "FAIL",
                             "ObjectType": "Pod",
                             "ObjectName": pod_name,
                             "Namespace": "kube-system",
-                            "Reason": f"--encryption-provider-config 플래그가 설정되어 있지만 경로가 유효하지 않거나 확인할 수 없음 (경로: {encryption_config})",
+                            "Reason": f"--encryption-provider-config 경로가 유효하지 않거나 확인할 수 없음 (경로: {encryption_config})",
                             "Evidence": {"args": args_list, "encryption_provider_config_path": encryption_config},
                             "Remediation": (
                                 f"컨트롤플레인 노드에서 설정 파일({encryption_config})을 확인하여 "

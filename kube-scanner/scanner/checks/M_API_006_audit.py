@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class APIServerAuditCheck(Check):
     id = "CHK-M-API-006"
-    name = "API Server 감사(audit) 로그 설정 검사"
+    name = "로그 관리"
     category = "ControlPlane"
     severity = "High"
     points = 7
@@ -69,13 +69,15 @@ class APIServerAuditCheck(Check):
                 apiserver_pods.append(it)
 
         if not apiserver_pods:
-            # 관리형 컨트롤플레인일 가능성 또는 권한 부족
             return [{
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 가능성 또는 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-apiserver 파드를 찾을 수 없음 (관리형 컨트롤플레인 또는 검사 대상 없음)",
                 "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
-                "Remediation": "관리형 클러스터이면 제공자 문서/콘솔에서 감사 로그 설정 확인"
+                "Remediation": "자체 운영 클러스터면 kube-system에 kube-apiserver 파드 존재 여부 확인"
             }]
 
         findings = []
@@ -127,13 +129,13 @@ class APIServerAuditCheck(Check):
             elif weak_rotation:
                 findings.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
+                    "Result": "PASS",
                     "ObjectType": "Pod",
                     "ObjectName": pod_name,
                     "Namespace": "kube-system",
-                    "Reason": "감사 로그 보전/로테이션 관련 설정 부재(권고): " + ", ".join(weak_rotation),
+                    "Reason": "감사 로그 필수 설정 완료; 로테이션 옵션(" + ", ".join(weak_rotation) + ") 추가 권장",
                     "Evidence": {"args": args_list, "flag_values": flag_values},
-                    "Remediation": "디스크 사용량과 조사 요건에 따라 --audit-log-maxage, --audit-log-maxbackup, --audit-log-maxsize 값을 설정하여 로그 롤링/보존 정책을 마련하세요."
+                    "Remediation": "선택: --audit-log-maxage, --audit-log-maxbackup, --audit-log-maxsize 로 로테이션 설정"
                 })
             else:
                 findings.append({

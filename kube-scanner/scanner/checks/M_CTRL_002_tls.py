@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class ControllerManagerTLSCheck(Check):
     id = "CHK-M-CTRL-002"
-    name = "Controller Manager SSL/TLS 설정 검사"
+    name = "SSL/TLS 활성화"
     category = "ControlPlane"
     severity = "High"
     points = 7
@@ -62,20 +62,15 @@ class ControllerManagerTLSCheck(Check):
                 cm_pods.append(it)
 
         if not cm_pods:
-            # 관리형 컨트롤플레인(EKS, GKE, AKS, kind 등)은 kube-controller-manager 파드가 없음.
-            # TLS는 클라우드 제공자가 관리하므로 이 검사 항목은 적용 대상이 아님 → PASS
             return [{
                 "CheckID": self.id,
-                "Result": "PASS",
+                "Result": "ERROR",
                 "ObjectType": "Cluster",
                 "ObjectName": "control-plane",
                 "Namespace": "N/A",
-                "Reason": "관리형 컨트롤플레인으로 kube-controller-manager 파드가 없음 (TLS는 플랫폼에서 관리)",
-                "Evidence": {
-                    "note": "자체 운영 컨트롤플레인이면 kube-system에 kube-controller-manager 파드가 있어야 함",
-                    "kube_system_pod_count": len(pods.get("items", []))
-                },
-                "Remediation": ""
+                "Reason": "kube-controller-manager 파드를 찾을 수 없음 (관리형 컨트롤플레인 또는 검사 대상 없음)",
+                "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
+                "Remediation": "자체 운영 클러스터면 kube-system에 kube-controller-manager 파드 존재 여부 확인"
             }]
 
         findings = []
@@ -108,20 +103,11 @@ class ControllerManagerTLSCheck(Check):
                     reasons.append("--root-ca-file 플래그가 단독으로 존재 (경로 지정 필요)")
                     result = "FAIL"
 
-            # feature-gates 판정: 권장(있으면 PASS), 없으면 WARN
+            # feature-gates 판정: 권장사항(있으면 좋음), 없어도 FAIL 아님 → PASS 유지
             if feature_gates is None:
-                reasons.append("--feature-gates 플래그가 없음 (권장: TLS/회전 관련 기능 활성화 여부 확인)")
-                if result != "FAIL":
-                    result = "WARN"
-            else:
-                # 비어 있거나 'present'인 경우는 WARN
-                if feature_gates == "present" or (isinstance(feature_gates, str) and feature_gates.strip() == ""):
-                    reasons.append("--feature-gates 값이 비어있거나 단독 플래그임 (구성 확인 권장)")
-                    if result != "FAIL":
-                        result = "WARN"
-                else:
-                    # 값이 있으면 PASS 조건에 기여 (예: "RotateKubeletClientCertificate=true,..." 등)
-                    pass
+                reasons.append("--feature-gates 플래그 없음 (선택적)")
+            elif feature_gates == "present" or (isinstance(feature_gates, str) and feature_gates.strip() == ""):
+                reasons.append("--feature-gates 값 비어있음 (선택적)")
 
             findings.append({
                 "CheckID": self.id,

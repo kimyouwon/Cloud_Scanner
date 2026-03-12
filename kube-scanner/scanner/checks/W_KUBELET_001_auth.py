@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class KubeletAuthCheck(Check):
     id = "CHK-W-KUBELET-001"
-    name = "Kubelet 인증 설정 검사"
+    name = "인증 제어"
     category = "Kubelet"
     severity = "High"
     points = 2
@@ -64,8 +64,8 @@ class KubeletAuthCheck(Check):
             if not node_items:
                 return [{
                     "CheckID": self.id,
-                    "Result": "WARN",
-                    "Reason": "노드를 찾을 수 없음",
+                    "Result": "ERROR",
+                    "Reason": "노드가 없어 검사할 수 없음",
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
@@ -86,8 +86,11 @@ class KubeletAuthCheck(Check):
                     has_ca = kubelet.get("has_clientCAFile") == "true"
 
                     if not present:
-                        status = "WARN"
-                        reason = "kubelet config.yaml을 읽을 수 없어 인증 설정을 확인할 수 없음"
+                        status = "ERROR"
+                        reason = (
+                            f"[{node_name}] 노드에서 kubelet 설정 파일(/var/lib/kubelet/config.yaml)을 읽을 수 없습니다. "
+                            "해당 경로가 없거나 node-scanner Pod가 hostPath로 마운트하지 못했을 수 있습니다."
+                        )
                     elif has_ca:
                         status = "PASS"
                         reason = "Kubelet 인증 설정(clientCAFile)이 확인됨"
@@ -110,11 +113,9 @@ class KubeletAuthCheck(Check):
                             "error": nd.get("error"),
                         },
                         "Remediation": (
-                            "각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요.\n"
-                            "예:\n"
-                            "authentication:\n"
-                            "  x509:\n"
-                            "    clientCAFile: /etc/kubernetes/pki/ca.crt\n"
+                            "각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요. "
+                            "ERROR인 경우: 1) kubectl apply -f k8s/node-scanner-daemonset.yaml 배포 2) 노드에 해당 경로 존재 여부 확인\n"
+                            "예: authentication:\n  x509:\n    clientCAFile: /etc/kubernetes/pki/ca.crt\n"
                         )
                     })
 
@@ -129,24 +130,33 @@ class KubeletAuthCheck(Check):
                 config_check = self._check_kubelet_config_via_node(node_name, kubeconfig)
                 if config_check.get("has_auth") is True:
                     status = "PASS"
+                    reason = "kubelet 인증 설정 점검 결과(ConfigMap 기반): clientCAFile 확인됨"
                 elif config_check.get("has_auth") is False:
                     status = "FAIL"
+                    reason = "Kubelet 인증 설정(clientCAFile)이 없음"
                 else:
-                    status = "WARN"
+                    status = "ERROR"
+                    reason = (
+                        "ConfigMap(kube-system 내 kubelet 관련)에서 인증 설정(clientCAFile)을 찾을 수 없습니다. "
+                        "node-scanner DaemonSet을 배포하면 노드별 config 파일을 직접 읽어 검사할 수 있습니다."
+                    )
                 results.append({
                     "CheckID": self.id,
                     "Result": status,
                     "ObjectType": "Node",
                     "ObjectName": node_name,
                     "Namespace": "N/A",
-                    "Reason": "kubelet 인증 설정 점검 결과(대체 경로: ConfigMap 기반)",
+                    "Reason": reason,
                     "Evidence": {
                         "node": node_name,
                         "kubelet_version": kubelet_version,
                         "source": config_check.get("source"),
                         "error": config_check.get("error"),
                     },
-                    "Remediation": "node-scanner DaemonSet을 배포하면 노드별로 더 정확히 판정할 수 있습니다."
+                    "Remediation": "" if status == "PASS" else (
+                        "각 노드의 kubelet config에 clientCAFile을 설정하세요. "
+                        "또는 node-scanner DaemonSet 배포 후 재스캔: kubectl apply -f k8s/node-scanner-daemonset.yaml"
+                    )
                 })
             return results
             

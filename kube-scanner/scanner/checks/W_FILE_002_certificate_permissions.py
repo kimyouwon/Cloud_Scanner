@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class WorkerCertificateFilePermissionsCheck(Check):
     id = "CHK-W-FILE-002"
-    name = "워커 노드 인증서 파일 권한 설정 검사"
+    name = "워커 노드 인증서 파일 권한"
     category = "File"
     severity = "High"
     points = 2
@@ -54,8 +54,8 @@ class WorkerCertificateFilePermissionsCheck(Check):
             if not node_items:
                 return [{
                     "CheckID": self.id,
-                    "Result": "WARN",
-                    "Reason": "노드를 찾을 수 없음",
+                    "Result": "ERROR",
+                    "Reason": "노드가 없어 검사할 수 없음",
                     "Evidence": {},
                     "Remediation": "클러스터에 노드가 있는지 확인하세요"
                 }]
@@ -102,8 +102,11 @@ class WorkerCertificateFilePermissionsCheck(Check):
                     pki_files = {p: fi for p, fi in files.items() if p.startswith("/var/lib/kubelet/pki/")}
 
                     if not pki_files:
-                        status = "WARN"
-                        reason = "pki 파일을 찾을 수 없거나 수집되지 않음"
+                        status = "ERROR"
+                        reason = (
+                            f"[{node_name}] 노드에 /var/lib/kubelet/pki 디렉터리(또는 파일)가 없거나 node-scanner가 읽지 못했습니다. "
+                            "Kubelet이 해당 경로를 사용하는지, node-scanner hostPath 마운트를 확인하세요."
+                        )
                         results.append({
                             "CheckID": self.id,
                             "Result": status,
@@ -119,7 +122,8 @@ class WorkerCertificateFilePermissionsCheck(Check):
                                 "error": nd.get("error"),
                             },
                             "Remediation": (
-                                "노드에서 /var/lib/kubelet/pki 디렉터리 내 인증서/키 파일의 권한을 확인하세요.\n"
+                                "노드에서 /var/lib/kubelet/pki 존재 여부 확인. "
+                                "없으면 kubelet 인증서 경로가 다른지 확인. node-scanner 배포: kubectl apply -f k8s/node-scanner-daemonset.yaml\n"
                             )
                         })
                         continue
@@ -139,8 +143,12 @@ class WorkerCertificateFilePermissionsCheck(Check):
                         status = "FAIL"
                         reason = "인증서/키 파일 권한이 부적절함: " + ", ".join(bad[:10]) + ("..." if len(bad) > 10 else "")
                     elif warns:
-                        status = "WARN"
-                        reason = "인증서/키 파일 권한 일부를 확인할 수 없음: " + ", ".join(warns[:10]) + ("..." if len(warns) > 10 else "")
+                        status = "ERROR"
+                        reason = (
+                            f"[{node_name}] 다음 인증서/키 파일이 없거나 권한 정보를 읽을 수 없음: "
+                            + ", ".join(warns[:10]) + ("..." if len(warns) > 10 else "") + ". "
+                            "파일 존재 여부 및 node-scanner 로그 수집 상태를 확인하세요."
+                        )
                     else:
                         status = "PASS"
                         reason = "인증서/키 파일 권한이 권장값으로 설정됨"
@@ -177,11 +185,14 @@ class WorkerCertificateFilePermissionsCheck(Check):
                 os_image = node_info.get("osImage", "unknown")
                 results.append({
                     "CheckID": self.id,
-                    "Result": "WARN",
+                    "Result": "ERROR",
                     "ObjectType": "Node",
                     "ObjectName": node_name,
                     "Namespace": "N/A",
-                    "Reason": "워커 노드 인증서 파일 권한을 자동으로 확인할 수 없음 (node-scanner DaemonSet 필요)",
+                    "Reason": (
+                        f"[{node_name}] node-scanner DaemonSet이 없거나 로그를 수집하지 못해 인증서/키 파일 권한을 확인할 수 없습니다. "
+                        "DaemonSet 배포 후 재검사하세요."
+                    ),
                     "Evidence": {
                         "node": node_name,
                         "os_image": os_image,
@@ -189,12 +200,8 @@ class WorkerCertificateFilePermissionsCheck(Check):
                         "node_scanner_error": (node_scanner_data or {}).get("error") if isinstance(node_scanner_data, dict) else None
                     },
                     "Remediation": (
-                        "노드에서 다음 명령으로 인증서/키 파일 권한을 확인/수정하세요:\n"
-                        "ls -al /var/lib/kubelet/pki/*.crt\n"
-                        "ls -al /var/lib/kubelet/pki/*.key\n"
-                        "sudo chown root:root <file>\n"
-                        "sudo chmod 644 <cert-file>\n"
-                        "sudo chmod 600 <key-file>\n"
+                        "1) node-scanner 배포: kubectl apply -f k8s/node-scanner-daemonset.yaml\n"
+                        "2) 노드에서 인증서/키 권한 확인: ls -al /var/lib/kubelet/pki ; chown root:root ; chmod 644(.crt) 600(.key)\n"
                     )
                 })
 

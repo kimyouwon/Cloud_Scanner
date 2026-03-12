@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class EtcdTLSCheck(Check):
     id = "CHK-M-ETCD-002"
-    name = "etcd SSL/TLS 적용 검사"
+    name = "SSL/TLS 활성화"
     category = "ControlPlane"
     severity = "Critical"
     points = 6
@@ -103,7 +103,7 @@ class EtcdTLSCheck(Check):
             
             findings.append({
                 "CheckID": self.id,
-                "Result": "FAIL" if missing_flags else "WARN",
+                "Result": "FAIL",
                 "ObjectType": "Pod",
                 "ObjectName": pod_name,
                 "Namespace": "kube-system",
@@ -232,18 +232,15 @@ class EtcdTLSCheck(Check):
             for etcd_pod in etcd_pods:
                 findings.extend(self._check_etcd_pod(etcd_pod, kubeconfig))
         else:
-            # etcd 파드를 찾지 못함 (외부 etcd 또는 관리형 클러스터)
             findings.append({
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-system에서 etcd 파드를 찾지 못함 (외부 etcd 또는 관리형 컨트롤플레인일 수 있음)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "etcd",
+                "Namespace": "N/A",
+                "Reason": "kube-system에서 etcd 파드를 찾을 수 없음 (외부/관리형 etcd 또는 검사 대상 없음)",
                 "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
-                "Remediation": (
-                    "etcd가 외부에서 실행되거나 관리형 클러스터인 경우, etcd 서버의 TLS 설정을 직접 확인하세요:\n"
-                    "- --client-cert-auth=true\n"
-                    "- --cert-file, --key-file, --trusted-ca-file 설정\n"
-                    "- --peer-cert-file, --peer-key-file (클러스터 구성 시)"
-                )
+                "Remediation": "자체 운영 클러스터면 etcd 파드 존재 여부 확인"
             })
 
         # kube-apiserver의 etcd 연결 TLS 설정 확인
@@ -253,20 +250,25 @@ class EtcdTLSCheck(Check):
         else:
             findings.append({
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-system에서 kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 수 있음 또는 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-apiserver 파드를 찾을 수 없음 (검사 대상 없음)",
                 "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
-                "Remediation": "관리형 클러스터이면 클라우드 콘솔/문서 확인. 자체관리라면 컨트롤플레인에서 매니페스트 확인"
+                "Remediation": ""
             })
 
         if not findings:
-            # 아무것도 찾지 못한 경우
             findings.append({
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "etcd 및 kube-apiserver 파드를 찾지 못함",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "etcd 및 kube-apiserver 파드를 찾을 수 없음 (검사 불가)",
                 "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
-                "Remediation": "컨트롤플레인 구성 확인"
+                "Remediation": ""
             })
 
         return findings

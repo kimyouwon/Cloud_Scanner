@@ -601,64 +601,85 @@ def save_html(results: Dict, output_path: str):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kubernetes Security Scanner Results</title>
+    <style>
+        :root{{
+            --bg:#e0f2fe;
+            --text:#0f172a;
+            --muted:#64748b;
+            --border:#e5e7eb;
+            --head:#f8fafc;
+            --row:#ffffff;
+            --rowAlt:#fbfdff;
+            --hover:#f1f5f9;
+        }}
+        *{{box-sizing:border-box}}
+        body{{margin:0;padding:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}}
+        .card{{max-width:1200px;margin:20px auto;background:white;border-radius:14px;box-shadow:0 10px 30px rgba(2,6,23,.10);overflow:hidden;border:1px solid rgba(148,163,184,.35)}}
+        .content{{background:white;padding:28px}}
+        .title{{font-size:1.4rem;font-weight:750;margin:0 0 22px 0;color:#0f172a;letter-spacing:-.2px}}
+        .meta{{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;gap:24px}}
+        .meta-left{{flex:1}}
+        .meta-line{{margin-bottom:10px}}
+        .meta-label{{font-weight:700;color:#334155}}
+        .meta-value{{color:var(--muted);margin-left:8px}}
+        .score-box{{display:flex;align-items:center;gap:18px}}
+        .grade{{color:white;padding:10px 16px;border-radius:12px;font-weight:800;font-size:1rem;box-shadow:0 8px 18px rgba(0,0,0,.12)}}
+        .score-big{{font-size:2.25rem;font-weight:900;color:#0f172a;line-height:1}}
+        .score-sub{{font-size:.875rem;color:var(--muted);margin-top:4px}}
+        .table-wrap{{margin-top:18px;border:1px solid var(--border);border-radius:12px;overflow:hidden}}
+        table{{width:100%;border-collapse:separate;border-spacing:0;background:white}}
+        thead th{{background:var(--head);padding:12px 14px;text-align:left;font-weight:800;color:#334155;font-size:.85rem;border-bottom:1px solid var(--border)}}
+        tbody td{{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}}
+        tbody tr:nth-child(odd){{background:var(--row)}}
+        tbody tr:nth-child(even){{background:var(--rowAlt)}}
+        tbody tr:hover{{background:var(--hover)}}
+        .col-category{{color:var(--muted);font-weight:700;white-space:nowrap}}
+        .col-item{{color:#0f172a}}
+        .col-target{{color:var(--muted)}}
+        .badge{{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.75rem;font-weight:900;letter-spacing:.2px}}
+        .badge-pass{{background:#dcfce7;color:#166534}}
+        .badge-fail{{background:#fee2e2;color:#991b1b}}
+        .badge-warn{{background:#fef3c7;color:#92400e}}
+        .badge-error{{background:#f1f5f9;color:#334155}}
+        .score-cell{{min-width:120px}}
+        .score-pill{{display:inline-flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:12px;border:1px solid rgba(148,163,184,.45);background:linear-gradient(180deg,#ffffff,#f8fafc);box-shadow:0 1px 0 rgba(2,6,23,.04)}}
+        .score-pill-top{{display:flex;align-items:baseline;justify-content:space-between;gap:10px}}
+        .score-deduct{{font-weight:900;color:#0f172a}}
+        .score-note{{font-size:.72rem;color:var(--muted);font-weight:700}}
+    </style>
 </head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#e0f2fe;min-height:100vh;">
-    <div style="max-width:1200px;margin:20px auto;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);overflow:hidden;">
-        <div style="background:white;padding:30px;">
-            <h1 style="font-size:1.5rem;font-weight:600;margin:0 0 30px 0;color:#1f2937;">[보안 점검 리포트]</h1>
+<body>
+    <div class="card">
+        <div class="content">
+            <h1 class="title">보안 점검 리포트</h1>
             
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;gap:30px;">
-                <div style="flex:1;">
-                    <div style="margin-bottom:12px;">
-                        <span style="font-weight:600;color:#374151;">점검 대상:</span>
-                        <span style="color:#6b7280;margin-left:8px;">{target_name}</span>
-                    </div>
-                    <div style="margin-bottom:12px;">
-                        <span style="font-weight:600;color:#374151;">점검 일시:</span>
-                        <span style="color:#6b7280;margin-left:8px;">{formatted_time}</span>
-                    </div>
-                    <div style="margin-bottom:12px;">
-                        <span style="font-weight:600;color:#374151;">총 항목수:</span>
-                        <span style="color:#6b7280;margin-left:8px;">{total}</span>
-                    </div>
-                    <div style="margin-bottom:12px;">
-                        <span style="font-weight:600;color:#374151;">FAIL 항목 수:</span>
-                        <span style="color:#ef4444;margin-left:8px;font-weight:600;">{failed}</span>
-                    </div>
-                    <div style="margin-bottom:12px;">
-                        <span style="font-weight:600;color:#374151;">WARN 항목 수:</span>
-                        <span style="color:#f59e0b;margin-left:8px;font-weight:600;">{warn_count}</span>
-                    </div>
-                    <div style="margin-bottom:12px;">
-                        <span style="font-weight:600;color:#374151;">획득 점수:</span>
-                        <span style="color:#1f2937;margin-left:8px;font-weight:600;">{int(score)}/{int(max_score)}점</span>
-                    </div>
+            <div class="meta">
+                <div class="meta-left">
+                    <div class="meta-line"><span class="meta-label">점검 대상</span><span class="meta-value">{target_name}</span></div>
+                    <div class="meta-line"><span class="meta-label">점검 일시</span><span class="meta-value">{formatted_time}</span></div>
+                    <div class="meta-line"><span class="meta-label">총 항목수</span><span class="meta-value">{total}</span></div>
+                    <div class="meta-line"><span class="meta-label">FAIL 항목 수</span><span class="meta-value" style="color:#ef4444;font-weight:900">{failed}</span></div>
+                    <div class="meta-line"><span class="meta-label">WARN 항목 수</span><span class="meta-value" style="color:#f59e0b;font-weight:900">{warn_count}</span></div>
+                    <div class="meta-line"><span class="meta-label">획득 점수</span><span class="meta-value" style="color:#0f172a;font-weight:900">{int(score)}/{int(max_score)}점</span></div>
                 </div>
-                
-                <div style="display:flex;align-items:center;gap:20px;">
-                    <div style="background:{grade_color};color:white;padding:12px 24px;border-radius:8px;font-weight:600;font-size:1.125rem;">
-                        {grade}
-                    </div>
+                <div class="score-box">
+                    <div class="grade" style="background:{grade_color};">{grade}</div>
                     <div>
-                        <div style="font-size:2.5rem;font-weight:700;color:#1f2937;line-height:1;">
-                            {int(summary.get('score', 0))}점
-                        </div>
-                        <div style="font-size:0.875rem;color:#6b7280;margin-top:4px;">
-                            스캔 점수
-                        </div>
+                        <div class="score-big">{int(summary.get('score', 0))}점</div>
+                        <div class="score-sub">스캔 점수</div>
                     </div>
                 </div>
             </div>
             
-            <div style="margin-top:30px;">
-                <table style="width:100%;border-collapse:collapse;background:white;border:1px solid #e5e7eb;">
-                    <thead style="background:#f3f4f6;">
+            <div class="table-wrap">
+                <table>
+                    <thead>
                         <tr>
-                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">범주</th>
-                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">항목</th>
-                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">대상</th>
-                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">결과</th>
-                            <th style="padding:12px;text-align:left;font-weight:600;color:#374151;font-size:0.875rem;border-bottom:2px solid #e5e7eb;">점수</th>
+                            <th>범주</th>
+                            <th>항목</th>
+                            <th>대상</th>
+                            <th>결과</th>
+                            <th style="text-align:right;">점수</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -666,6 +687,40 @@ def save_html(results: Dict, output_path: str):
     
     # 테이블 행 추가 (Check ID 순으로 정렬)
     sorted_results = sorted(results.get("Results", []), key=lambda x: x.get("CheckID", "UNKNOWN"))
+
+    # 같은 CheckID가 노드별로 여러 줄 출력되더라도, 점수(감점)는 "체크별 최악 상태" 기준으로 1회만 표시
+    status_rank = {"PASS": 1, "WARN": 2, "FAIL": 3, "ERROR": 4}
+    group_counts: Dict[str, int] = {}
+    worst_status_per_check: Dict[str, str] = {}
+    for r in sorted_results:
+        cid = r.get("CheckID", "UNKNOWN")
+        group_counts[cid] = group_counts.get(cid, 0) + 1
+        s = r.get("Result", "UNKNOWN")
+        prev = worst_status_per_check.get(cid)
+        if prev is None or status_rank.get(s, 0) > status_rank.get(prev, 0):
+            worst_status_per_check[cid] = s
+
+    earned_display_per_check: Dict[str, str] = {}
+    for cid, worst_status in worst_status_per_check.items():
+        pts = check_info.get(cid, {}).get("points", 0)
+        if worst_status == "PASS":
+            earned = float(pts)
+        elif worst_status == "WARN":
+            earned = float(pts) * 0.5
+        elif worst_status in ("FAIL", "ERROR"):
+            earned = 0.0
+        else:
+            earned = 0.0
+
+        if pts <= 0:
+            earned_display_per_check[cid] = "-"
+        else:
+            # 표시용: 소수점이 없으면 정수로
+            earned_str = str(int(earned)) if abs(earned - int(earned)) < 1e-9 else f"{earned:.1f}"
+            earned_display_per_check[cid] = f"{earned_str}/{int(pts)}"
+
+    rendered_score_for: set = set()
+
     for result in sorted_results:
         check_id = result.get("CheckID", "UNKNOWN")
         status = result.get("Result", "UNKNOWN")
@@ -688,27 +743,39 @@ def save_html(results: Dict, output_path: str):
         else:
             target = "-"
         
-        # 점수 계산 (PASS=0, WARN=-50%, FAIL=-100%)
-        if status == "PASS":
-            score_display = "0"
-        elif status == "WARN":
-            deducted = int(check_points * 0.5)
-            score_display = f"-{deducted}" if deducted > 0 else "0"
-        elif status == "FAIL":
-            score_display = f"-{int(check_points)}" if check_points > 0 else "-"
-        else:
-            score_display = "-"
+        # 점수(감점) 표시는 CheckID 기준 1회만 (최악 상태 기준)
+        show_score_cell = check_id not in rendered_score_for
+        if show_score_cell:
+            rendered_score_for.add(check_id)
+        score_display = earned_display_per_check.get(check_id, "-")
         
-        # 결과 색상
-        result_color = "#ef4444" if status == "FAIL" else "#1f2937"
+        # 결과 배지 (가독성/일관성)
+        if status == "PASS":
+            result_badge = '<span class="badge badge-pass">PASS</span>'
+        elif status == "FAIL":
+            result_badge = '<span class="badge badge-fail">FAIL</span>'
+        elif status == "WARN":
+            result_badge = '<span class="badge badge-warn">WARN</span>'
+        else:
+            result_badge = '<span class="badge badge-error">ERROR</span>'
+
+        # 감점 표시는 pill + (체크 기준/최악 결과) 안내
+        score_pill_html = (
+            f'<span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">'
+            f'  <span class="score-pill-top">'
+            f'    <span class="score-deduct">{score_display}</span>'
+            f'  </span>'
+            f'  <span class="score-note">체크 기준(최악 결과)</span>'
+            f'</span>'
+        )
         
         html_content += f"""
-                        <tr style="border-top:1px solid #e5e7eb;">
-                            <td style="padding:12px;color:#6b7280;font-weight:500;">{check_category}</td>
-                            <td style="padding:12px;color:#1f2937;">{check_name}</td>
-                            <td style="padding:12px;color:#6b7280;">{target}</td>
-                            <td style="padding:12px;color:{result_color};font-weight:600;">{status}</td>
-                            <td style="padding:12px;color:#6b7280;">{score_display}</td>
+                        <tr>
+                            <td class="col-category">{check_category}</td>
+                            <td class="col-item">{check_name}</td>
+                            <td class="col-target">{target}</td>
+                            <td>{result_badge}</td>
+                            {f'<td class="score-cell" rowspan="{group_counts.get(check_id, 1)}" style="text-align:right;vertical-align:middle;">{score_pill_html}</td>' if show_score_cell else ''}
                         </tr>
 """
     
@@ -776,6 +843,38 @@ def save_html(results: Dict, output_path: str):
                     {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
                     {f'<div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{verification_command}</pre></div>' if verification_command else ''}
                     {f'<div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{remediation}</pre></div>' if remediation else ''}
+                </div>
+"""
+        html_content += """
+            </div>
+"""
+    
+    # ERROR 항목 상세 정보 추가
+    error_items = [r for r in results.get("Results", []) if r.get("Result") == "ERROR"]
+    if error_items:
+        html_content += f"""
+            <div style="margin-top:30px;">
+                <h2 style="color:#374151;font-size:1.25rem;margin-bottom:20px;">⚠️ ERROR 항목 상세 정보 ({len(error_items)}건)</h2>
+"""
+        for result in error_items:
+            check_id = result.get("CheckID", "UNKNOWN")
+            check_name = check_info.get(check_id, {}).get("name", check_id)
+            reason = result.get("Reason", "")
+            remediation = result.get("Remediation", "")
+            recommended_setting = result.get("RecommendedSetting", "")
+            verification_command = result.get("VerificationCommand", "")
+            description = result.get("Description", "")
+            risk_level = result.get("RiskLevel", 0)
+            
+            html_content += f"""
+                <div style="margin-bottom:24px;padding:20px;background:#f1f5f9;border-left:4px solid #64748b;border-radius:4px;">
+                    <h3 style="color:#334155;font-size:1.1rem;margin-bottom:12px;">{check_id}: {check_name}</h3>
+                    {f'<div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#475569;">{risk_level}/10</span></div>' if risk_level > 0 else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>설명:</strong> {description}</div>' if description else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#475569;">{reason}</span></div>' if reason else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#e2e8f0;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{recommended_setting}</pre></div>' if recommended_setting else ''}
+                    {f'<div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#e2e8f0;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{verification_command}</pre></div>' if verification_command else ''}
+                    {f'<div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#e2e8f0;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">{remediation}</pre></div>' if remediation else ''}
                 </div>
 """
         html_content += """

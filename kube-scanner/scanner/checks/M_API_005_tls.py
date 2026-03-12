@@ -5,7 +5,7 @@ import subprocess, json, traceback
 
 class APIServerTLSCheck(Check):
     id = "CHK-M-API-005"
-    name = "API Server SSL/TLS 설정 검사"
+    name = "SSL/TLS 활성화"
     category = "ControlPlane"
     severity = "Critical"
     points = 7
@@ -87,10 +87,13 @@ class APIServerTLSCheck(Check):
         if not apiserver_pods:
             return [{
                 "CheckID": self.id,
-                "Result": "WARN",
-                "Reason": "kube-apiserver 파드를 찾지 못함 (관리형 컨트롤플레인일 수 있음 또는 권한 부족)",
+                "Result": "ERROR",
+                "ObjectType": "Cluster",
+                "ObjectName": "control-plane",
+                "Namespace": "N/A",
+                "Reason": "kube-apiserver 파드를 찾을 수 없음 (관리형 컨트롤플레인 또는 검사 대상 없음)",
                 "Evidence": {"kube_system_pod_count": len(pods.get("items", []))},
-                "Remediation": "클러스터가 관리형인지 확인하거나 control-plane 접근 권한 확보"
+                "Remediation": "자체 운영 클러스터면 kube-system에 kube-apiserver 파드 존재 여부 확인"
             }]
 
         findings = []
@@ -144,7 +147,7 @@ class APIServerTLSCheck(Check):
                     details.append("--tls-cipher-suites 에 약한 암호화 알고리즘이 포함됨(권고하지 않음)")
                 findings.append({
                     "CheckID": self.id,
-                    "Result": "FAIL" if missing_flags or insecure_port else "WARN",
+                    "Result": "FAIL",
                     "ObjectType": "Pod",
                     "ObjectName": pod_name,
                     "Namespace": "kube-system",
