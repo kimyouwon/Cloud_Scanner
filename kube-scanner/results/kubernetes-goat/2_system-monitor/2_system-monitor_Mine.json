@@ -1,7 +1,109 @@
 {
-  "ScanID": "scan-d2c44003",
-  "Timestamp": "2026-03-09 18:08:12.366476",
+  "ScanID": "scan-963cefb1",
+  "Timestamp": "2026-03-12 15:20:58.688493",
   "Results": [
+    {
+      "CheckID": "CHK-M-API-001",
+      "Result": "FAIL",
+      "ObjectType": "Pod",
+      "ObjectName": "kube-apiserver-kind-control-plane",
+      "Namespace": "kube-system",
+      "Reason": "--anonymous-auth 플래그가 없음 (기본값 true로 익명 접근 허용 가능)",
+      "Evidence": {
+        "args": [
+          "kube-apiserver",
+          "--advertise-address=172.18.0.2",
+          "--allow-privileged=true",
+          "--authorization-mode=Node,RBAC",
+          "--client-ca-file=/etc/kubernetes/pki/ca.crt",
+          "--enable-admission-plugins=NodeRestriction",
+          "--enable-bootstrap-token-auth=true",
+          "--etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt",
+          "--etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt",
+          "--etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key",
+          "--etcd-servers=https://127.0.0.1:2379",
+          "--kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt",
+          "--kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key",
+          "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
+          "--proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt",
+          "--proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key",
+          "--requestheader-allowed-names=front-proxy-client",
+          "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
+          "--requestheader-extra-headers-prefix=X-Remote-Extra-",
+          "--requestheader-group-headers=X-Remote-Group",
+          "--requestheader-username-headers=X-Remote-User",
+          "--runtime-config=",
+          "--secure-port=6443",
+          "--service-account-issuer=https://kubernetes.default.svc.cluster.local",
+          "--service-account-key-file=/etc/kubernetes/pki/sa.pub",
+          "--service-account-signing-key-file=/etc/kubernetes/pki/sa.key",
+          "--service-cluster-ip-range=10.96.0.0/16",
+          "--tls-cert-file=/etc/kubernetes/pki/apiserver.crt",
+          "--tls-private-key-file=/etc/kubernetes/pki/apiserver.key"
+        ],
+        "service-account-lookup": null
+      },
+      "Remediation": "명시적으로 --anonymous-auth=false 설정 및 --service-account-lookup=true 추가",
+      "Description": "API Server 비인증 접근 차단이 허용될 경우, 익명 요청이 활성화되며 비인가자가 서버에 접근하여 Kubernetes 시스템 환경에 영향을 줄 수 있다.",
+      "RiskLevel": 10,
+      "RecommendedSetting": "API server 비인증 접근을 차단한 경우\n- --anonymous-auth=false\n- --service-account-lookup=true",
+      "VerificationCommand": "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-apiserver\")) | .spec.containers[].args'",
+      "Category": "ControlPlane"
+    },
+    {
+      "CheckID": "CHK-M-API-006",
+      "Result": "FAIL",
+      "ObjectType": "Pod",
+      "ObjectName": "kube-apiserver-kind-control-plane",
+      "Namespace": "kube-system",
+      "Reason": "감사 로그 필수 플래그 누락: --audit-log-path, --audit-policy-file",
+      "Evidence": {
+        "args": [
+          "kube-apiserver",
+          "--advertise-address=172.18.0.2",
+          "--allow-privileged=true",
+          "--authorization-mode=Node,RBAC",
+          "--client-ca-file=/etc/kubernetes/pki/ca.crt",
+          "--enable-admission-plugins=NodeRestriction",
+          "--enable-bootstrap-token-auth=true",
+          "--etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt",
+          "--etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt",
+          "--etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key",
+          "--etcd-servers=https://127.0.0.1:2379",
+          "--kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt",
+          "--kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key",
+          "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
+          "--proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt",
+          "--proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key",
+          "--requestheader-allowed-names=front-proxy-client",
+          "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
+          "--requestheader-extra-headers-prefix=X-Remote-Extra-",
+          "--requestheader-group-headers=X-Remote-Group",
+          "--requestheader-username-headers=X-Remote-User",
+          "--runtime-config=",
+          "--secure-port=6443",
+          "--service-account-issuer=https://kubernetes.default.svc.cluster.local",
+          "--service-account-key-file=/etc/kubernetes/pki/sa.pub",
+          "--service-account-signing-key-file=/etc/kubernetes/pki/sa.key",
+          "--service-cluster-ip-range=10.96.0.0/16",
+          "--tls-cert-file=/etc/kubernetes/pki/apiserver.crt",
+          "--tls-private-key-file=/etc/kubernetes/pki/apiserver.key"
+        ],
+        "flag_values": {
+          "--audit-log-path": null,
+          "--audit-policy-file": null,
+          "--audit-log-maxage": null,
+          "--audit-log-maxbackup": null,
+          "--audit-log-maxsize": null
+        }
+      },
+      "Remediation": "kube-apiserver 매니페스트에 --audit-log-path, --audit-policy-file 을 설정하세요. 또한 장기 보관과 디스크 관리를 위해 --audit-log-maxage/--audit-log-maxbackup/--audit-log-maxsize 등 로테이션 옵션을 설정하세요.",
+      "Description": "로그 정보는 침해 사고 발생시 해킹의 흔적 및 공격기법을 확인할 수 있는 중요 자료로 정기적인 로그 분석을 통하여 시스템 침입 흔적을 확인할 수 있다.",
+      "RiskLevel": 7,
+      "RecommendedSetting": "API server 로그가 활성화된 경우\n- --audit-log-path\n- --audit-policy-file\n- --audit-log-maxage\n- --audit-log-maxbackup\n- --audit-log-maxsize",
+      "VerificationCommand": "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-apiserver\")) | .spec.containers[].args' | grep -E 'audit-log|audit-policy'",
+      "Category": "ControlPlane"
+    },
     {
       "CheckID": "CHK-M-API-004",
       "Result": "PASS",
@@ -51,67 +153,6 @@
       "RiskLevel": 10,
       "RecommendedSetting": "API server 권한이 AlwaysAllow 값으로 설정되어 있지 않은 경우\n- --authorization-mode=RBAC (또는 Node,RBAC)",
       "VerificationCommand": "/etc/kubernetes/manifests/kube-apiserver.yaml 파일 내 AlwaysAllow 설정 확인",
-      "Category": "ControlPlane"
-    },
-    {
-      "CheckID": "CHK-M-API-003",
-      "Result": "PASS",
-      "ObjectType": "Pod",
-      "ObjectName": "kube-controller-manager-kind-control-plane",
-      "Namespace": "kube-system",
-      "Reason": "--bind-address=127.0.0.1 (안전)",
-      "Evidence": {
-        "args": [
-          "kube-controller-manager",
-          "--allocate-node-cidrs=true",
-          "--authentication-kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--authorization-kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--bind-address=127.0.0.1",
-          "--client-ca-file=/etc/kubernetes/pki/ca.crt",
-          "--cluster-cidr=10.244.0.0/16",
-          "--cluster-name=kind",
-          "--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt",
-          "--cluster-signing-key-file=/etc/kubernetes/pki/ca.key",
-          "--controllers=*,bootstrapsigner,tokencleaner",
-          "--enable-hostpath-provisioner=true",
-          "--kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--leader-elect=true",
-          "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
-          "--root-ca-file=/etc/kubernetes/pki/ca.crt",
-          "--service-account-private-key-file=/etc/kubernetes/pki/sa.key",
-          "--service-cluster-ip-range=10.96.0.0/16",
-          "--use-service-account-credentials=true"
-        ]
-      },
-      "Remediation": "",
-      "Description": "API Server의 서비스 API가 외부에서 접근 가능할 경우, Kubernetes 시스템의 모든 요소에 영향을 줄 수 있으므로 클러스터의 공격을 최소화하기 위해 로컬호스트 인터페이스에만 바인딩 설정을 해야 한다.",
-      "RiskLevel": 9,
-      "RecommendedSetting": "API server 서비스 API가 외부에서 접근 불가능한 경우\n- --bind-address=127.0.0.1 (kube-scheduler, kube-controller-manager)",
-      "VerificationCommand": "/etc/kubernetes/manifests/kube-scheduler.yaml 파일 내 --bind-address 파라미터 값 확인\n/etc/kubernetes/manifests/kube-controller-manager.yaml 파일 내 --bind-address 파라미터 값 확인",
-      "Category": "ControlPlane"
-    },
-    {
-      "CheckID": "CHK-M-API-003",
-      "Result": "PASS",
-      "ObjectType": "Pod",
-      "ObjectName": "kube-scheduler-kind-control-plane",
-      "Namespace": "kube-system",
-      "Reason": "--bind-address=127.0.0.1 (안전)",
-      "Evidence": {
-        "args": [
-          "kube-scheduler",
-          "--authentication-kubeconfig=/etc/kubernetes/scheduler.conf",
-          "--authorization-kubeconfig=/etc/kubernetes/scheduler.conf",
-          "--bind-address=127.0.0.1",
-          "--kubeconfig=/etc/kubernetes/scheduler.conf",
-          "--leader-elect=true"
-        ]
-      },
-      "Remediation": "",
-      "Description": "API Server의 서비스 API가 외부에서 접근 가능할 경우, Kubernetes 시스템의 모든 요소에 영향을 줄 수 있으므로 클러스터의 공격을 최소화하기 위해 로컬호스트 인터페이스에만 바인딩 설정을 해야 한다.",
-      "RiskLevel": 9,
-      "RecommendedSetting": "API server 서비스 API가 외부에서 접근 불가능한 경우\n- --bind-address=127.0.0.1 (kube-scheduler, kube-controller-manager)",
-      "VerificationCommand": "/etc/kubernetes/manifests/kube-scheduler.yaml 파일 내 --bind-address 파라미터 값 확인\n/etc/kubernetes/manifests/kube-controller-manager.yaml 파일 내 --bind-address 파라미터 값 확인",
       "Category": "ControlPlane"
     },
     {
@@ -219,153 +260,122 @@
       "Category": "ControlPlane"
     },
     {
-      "CheckID": "CHK-M-API-001",
-      "Result": "WARN",
+      "CheckID": "CHK-M-API-003",
+      "Result": "PASS",
       "ObjectType": "Pod",
-      "ObjectName": "kube-apiserver-kind-control-plane",
+      "ObjectName": "kube-controller-manager-kind-control-plane",
       "Namespace": "kube-system",
-      "Reason": "--anonymous-auth 플래그가 없음(기본값에 따라 익명 접근 허용일 수 있음). 확인 권장",
+      "Reason": "--bind-address=127.0.0.1 (안전)",
       "Evidence": {
         "args": [
-          "kube-apiserver",
-          "--advertise-address=172.18.0.2",
-          "--allow-privileged=true",
-          "--authorization-mode=Node,RBAC",
+          "kube-controller-manager",
+          "--allocate-node-cidrs=true",
+          "--authentication-kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--authorization-kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--bind-address=127.0.0.1",
           "--client-ca-file=/etc/kubernetes/pki/ca.crt",
-          "--enable-admission-plugins=NodeRestriction",
-          "--enable-bootstrap-token-auth=true",
-          "--etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt",
-          "--etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt",
-          "--etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key",
-          "--etcd-servers=https://127.0.0.1:2379",
-          "--kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt",
-          "--kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key",
-          "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
-          "--proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt",
-          "--proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key",
-          "--requestheader-allowed-names=front-proxy-client",
+          "--cluster-cidr=10.244.0.0/16",
+          "--cluster-name=kind",
+          "--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt",
+          "--cluster-signing-key-file=/etc/kubernetes/pki/ca.key",
+          "--controllers=*,bootstrapsigner,tokencleaner",
+          "--enable-hostpath-provisioner=true",
+          "--kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--leader-elect=true",
           "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
-          "--requestheader-extra-headers-prefix=X-Remote-Extra-",
-          "--requestheader-group-headers=X-Remote-Group",
-          "--requestheader-username-headers=X-Remote-User",
-          "--runtime-config=",
-          "--secure-port=6443",
-          "--service-account-issuer=https://kubernetes.default.svc.cluster.local",
-          "--service-account-key-file=/etc/kubernetes/pki/sa.pub",
-          "--service-account-signing-key-file=/etc/kubernetes/pki/sa.key",
+          "--root-ca-file=/etc/kubernetes/pki/ca.crt",
+          "--service-account-private-key-file=/etc/kubernetes/pki/sa.key",
           "--service-cluster-ip-range=10.96.0.0/16",
-          "--tls-cert-file=/etc/kubernetes/pki/apiserver.crt",
-          "--tls-private-key-file=/etc/kubernetes/pki/apiserver.key"
-        ],
-        "service-account-lookup": null
+          "--use-service-account-credentials=true"
+        ]
       },
-      "Remediation": "명시적으로 --anonymous-auth=false 설정 및 --service-account-lookup=true 추가 권장",
-      "Description": "API Server 비인증 접근 차단이 허용될 경우, 익명 요청이 활성화되며 비인가자가 서버에 접근하여 Kubernetes 시스템 환경에 영향을 줄 수 있다.",
-      "RiskLevel": 10,
-      "RecommendedSetting": "API server 비인증 접근을 차단한 경우\n- --anonymous-auth=false\n- --service-account-lookup=true",
-      "VerificationCommand": "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-apiserver\")) | .spec.containers[].args'",
+      "Remediation": "",
+      "Description": "API Server의 서비스 API가 외부에서 접근 가능할 경우, Kubernetes 시스템의 모든 요소에 영향을 줄 수 있으므로 클러스터의 공격을 최소화하기 위해 로컬호스트 인터페이스에만 바인딩 설정을 해야 한다.",
+      "RiskLevel": 9,
+      "RecommendedSetting": "API server 서비스 API가 외부에서 접근 불가능한 경우\n- --bind-address=127.0.0.1 (kube-scheduler, kube-controller-manager)",
+      "VerificationCommand": "/etc/kubernetes/manifests/kube-scheduler.yaml 파일 내 --bind-address 파라미터 값 확인\n/etc/kubernetes/manifests/kube-controller-manager.yaml 파일 내 --bind-address 파라미터 값 확인",
       "Category": "ControlPlane"
     },
     {
-      "CheckID": "CHK-M-API-006",
+      "CheckID": "CHK-M-API-003",
+      "Result": "PASS",
+      "ObjectType": "Pod",
+      "ObjectName": "kube-scheduler-kind-control-plane",
+      "Namespace": "kube-system",
+      "Reason": "--bind-address=127.0.0.1 (안전)",
+      "Evidence": {
+        "args": [
+          "kube-scheduler",
+          "--authentication-kubeconfig=/etc/kubernetes/scheduler.conf",
+          "--authorization-kubeconfig=/etc/kubernetes/scheduler.conf",
+          "--bind-address=127.0.0.1",
+          "--kubeconfig=/etc/kubernetes/scheduler.conf",
+          "--leader-elect=true"
+        ]
+      },
+      "Remediation": "",
+      "Description": "API Server의 서비스 API가 외부에서 접근 가능할 경우, Kubernetes 시스템의 모든 요소에 영향을 줄 수 있으므로 클러스터의 공격을 최소화하기 위해 로컬호스트 인터페이스에만 바인딩 설정을 해야 한다.",
+      "RiskLevel": 9,
+      "RecommendedSetting": "API server 서비스 API가 외부에서 접근 불가능한 경우\n- --bind-address=127.0.0.1 (kube-scheduler, kube-controller-manager)",
+      "VerificationCommand": "/etc/kubernetes/manifests/kube-scheduler.yaml 파일 내 --bind-address 파라미터 값 확인\n/etc/kubernetes/manifests/kube-controller-manager.yaml 파일 내 --bind-address 파라미터 값 확인",
+      "Category": "ControlPlane"
+    },
+    {
+      "CheckID": "CHK-M-CTRL-002",
+      "Result": "PASS",
+      "ObjectType": "Pod",
+      "ObjectName": "kube-controller-manager-kind-control-plane",
+      "Namespace": "kube-system",
+      "Reason": "--feature-gates 플래그 없음 (선택적)",
+      "Evidence": {
+        "args": [
+          "kube-controller-manager",
+          "--allocate-node-cidrs=true",
+          "--authentication-kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--authorization-kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--bind-address=127.0.0.1",
+          "--client-ca-file=/etc/kubernetes/pki/ca.crt",
+          "--cluster-cidr=10.244.0.0/16",
+          "--cluster-name=kind",
+          "--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt",
+          "--cluster-signing-key-file=/etc/kubernetes/pki/ca.key",
+          "--controllers=*,bootstrapsigner,tokencleaner",
+          "--enable-hostpath-provisioner=true",
+          "--kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--leader-elect=true",
+          "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
+          "--root-ca-file=/etc/kubernetes/pki/ca.crt",
+          "--service-account-private-key-file=/etc/kubernetes/pki/sa.key",
+          "--service-cluster-ip-range=10.96.0.0/16",
+          "--use-service-account-credentials=true"
+        ],
+        "root_ca_file": "/etc/kubernetes/pki/ca.crt",
+        "feature_gates": null
+      },
+      "Remediation": "kube-controller-manager 매니페스트에서 --root-ca-file=/path/to/ca.crt 를 설정하여 신뢰할 CA를 지정하세요. 또한 TLS 관련/자동갱신 기능(예: RotateKubeletClientCertificate 등)이 필요하면 --feature-gates에 적절한 값을 추가하세요. 파일 존재/권한 확인은 control-plane 노드에서 직접 수행하십시오.",
+      "Description": "",
+      "RiskLevel": 0,
+      "RecommendedSetting": "",
+      "VerificationCommand": "",
+      "Category": "ControlPlane"
+    },
+    {
+      "CheckID": "CHK-M-PSA-001",
       "Result": "FAIL",
-      "ObjectType": "Pod",
-      "ObjectName": "kube-apiserver-kind-control-plane",
-      "Namespace": "kube-system",
-      "Reason": "감사 로그 필수 플래그 누락: --audit-log-path, --audit-policy-file",
+      "ObjectType": "Container",
+      "ObjectName": "system-monitor",
+      "Namespace": "default",
+      "Reason": "container.securityContext.privileged == true",
       "Evidence": {
-        "args": [
-          "kube-apiserver",
-          "--advertise-address=172.18.0.2",
-          "--allow-privileged=true",
-          "--authorization-mode=Node,RBAC",
-          "--client-ca-file=/etc/kubernetes/pki/ca.crt",
-          "--enable-admission-plugins=NodeRestriction",
-          "--enable-bootstrap-token-auth=true",
-          "--etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt",
-          "--etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt",
-          "--etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key",
-          "--etcd-servers=https://127.0.0.1:2379",
-          "--kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt",
-          "--kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key",
-          "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname",
-          "--proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt",
-          "--proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key",
-          "--requestheader-allowed-names=front-proxy-client",
-          "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
-          "--requestheader-extra-headers-prefix=X-Remote-Extra-",
-          "--requestheader-group-headers=X-Remote-Group",
-          "--requestheader-username-headers=X-Remote-User",
-          "--runtime-config=",
-          "--secure-port=6443",
-          "--service-account-issuer=https://kubernetes.default.svc.cluster.local",
-          "--service-account-key-file=/etc/kubernetes/pki/sa.pub",
-          "--service-account-signing-key-file=/etc/kubernetes/pki/sa.key",
-          "--service-cluster-ip-range=10.96.0.0/16",
-          "--tls-cert-file=/etc/kubernetes/pki/apiserver.crt",
-          "--tls-private-key-file=/etc/kubernetes/pki/apiserver.key"
-        ],
-        "flag_values": {
-          "--audit-log-path": null,
-          "--audit-policy-file": null,
-          "--audit-log-maxage": null,
-          "--audit-log-maxbackup": null,
-          "--audit-log-maxsize": null
-        }
+        "pod": "system-monitor-deployment-5d49dd76b9-8mrtg"
       },
-      "Remediation": "kube-apiserver 매니페스트에 --audit-log-path, --audit-policy-file 을 설정하세요. 또한 장기 보관과 디스크 관리를 위해 --audit-log-maxage/--audit-log-maxbackup/--audit-log-maxsize 등 로테이션 옵션을 설정하세요.",
-      "Description": "로그 정보는 침해 사고 발생시 해킹의 흔적 및 공격기법을 확인할 수 있는 중요 자료로 정기적인 로그 분석을 통하여 시스템 침입 흔적을 확인할 수 있다.",
-      "RiskLevel": 7,
-      "RecommendedSetting": "API server 로그가 활성화된 경우\n- --audit-log-path\n- --audit-policy-file\n- --audit-log-maxage\n- --audit-log-maxbackup\n- --audit-log-maxsize",
-      "VerificationCommand": "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-apiserver\")) | .spec.containers[].args' | grep -E 'audit-log|audit-policy'",
-      "Category": "ControlPlane"
-    },
-    {
-      "CheckID": "CHK-M-ETCD-002",
-      "Result": "PASS",
-      "ObjectType": "Pod",
-      "ObjectName": "etcd-kind-control-plane",
-      "Namespace": "kube-system",
-      "Reason": "etcd 서버에 TLS 설정이 적절히 구성됨",
-      "Evidence": {
-        "flag_values": {
-          "--client-cert-auth": "true",
-          "--cert-file": "/etc/kubernetes/pki/etcd/server.crt",
-          "--key-file": "/etc/kubernetes/pki/etcd/server.key",
-          "--peer-cert-file": "/etc/kubernetes/pki/etcd/peer.crt",
-          "--peer-key-file": "/etc/kubernetes/pki/etcd/peer.key",
-          "--trusted-ca-file": "/etc/kubernetes/pki/etcd/ca.crt",
-          "--auto-tls": null,
-          "--peer-auto-tls": null
-        }
-      },
-      "Remediation": "",
-      "Description": "",
-      "RiskLevel": 0,
-      "RecommendedSetting": "",
-      "VerificationCommand": "",
-      "Category": "ControlPlane"
-    },
-    {
-      "CheckID": "CHK-M-ETCD-002",
-      "Result": "PASS",
-      "ObjectType": "Pod",
-      "ObjectName": "kube-apiserver-kind-control-plane",
-      "Namespace": "kube-system",
-      "Reason": "kube-apiserver의 etcd 연결 TLS 설정이 적절히 구성됨",
-      "Evidence": {
-        "flag_values": {
-          "--etcd-certfile": "/etc/kubernetes/pki/apiserver-etcd-client.crt",
-          "--etcd-keyfile": "/etc/kubernetes/pki/apiserver-etcd-client.key",
-          "--etcd-cafile": "/etc/kubernetes/pki/etcd/ca.crt"
-        }
-      },
-      "Remediation": "",
-      "Description": "",
-      "RiskLevel": 0,
-      "RecommendedSetting": "",
-      "VerificationCommand": "",
-      "Category": "ControlPlane"
+      "Remediation": "privileged:false 설정 또는 보다 세분화된 권한으로 대체",
+      "Severity": "High",
+      "Description": "PodSecurityAdmission(이하 PSA)는 클러스터 및 네임스페이스 수준의 리소스로, 파드에 대해 서로 다른 격리 수준을 정의한다. PodSecurityStandard(이하 PSS)를 적용하기 위해 내장된 PSA Controller를 통해 수행된다. PSS 수준에 맞지 않은 Pod를 생성할 경우 설정된 PSS 수준에 따라 내장된 PSA Controller가 유효성을 검사한다. 따라서, 파드 내 컨테이너가 불필요한 권한을 가지지 않도록 PSA를 통해 PSS를 적용하여 운용해야 한다.",
+      "RiskLevel": 9,
+      "RecommendedSetting": "PodSecurityAdmission 정책을 통해 컨테이너 권한을 제어한 경우\n- allowPrivilegeEscalation=false\n- runAsUser 설정\n- runAsNonRoot=true\n- capabilities.drop=ALL\n- seccompProfile 적용",
+      "VerificationCommand": "kubectl get pods --all-namespaces -o json | jq '.items[].spec.containers[].securityContext.privileged'",
+      "Category": "Pod"
     },
     {
       "CheckID": "CHK-M-PSA-001",
@@ -422,6 +432,45 @@
       "Category": "Pod"
     },
     {
+      "CheckID": "CHK-M-CTRL-001",
+      "Result": "PASS",
+      "ObjectType": "Pod",
+      "ObjectName": "kube-controller-manager-kind-control-plane",
+      "Namespace": "kube-system",
+      "Reason": "Controller 인증 제어 설정(서비스어카운트 자격증명 + private key)이 적절히 구성됨",
+      "Evidence": {
+        "args": [
+          "kube-controller-manager",
+          "--allocate-node-cidrs=true",
+          "--authentication-kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--authorization-kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--bind-address=127.0.0.1",
+          "--client-ca-file=/etc/kubernetes/pki/ca.crt",
+          "--cluster-cidr=10.244.0.0/16",
+          "--cluster-name=kind",
+          "--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt",
+          "--cluster-signing-key-file=/etc/kubernetes/pki/ca.key",
+          "--controllers=*,bootstrapsigner,tokencleaner",
+          "--enable-hostpath-provisioner=true",
+          "--kubeconfig=/etc/kubernetes/controller-manager.conf",
+          "--leader-elect=true",
+          "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
+          "--root-ca-file=/etc/kubernetes/pki/ca.crt",
+          "--service-account-private-key-file=/etc/kubernetes/pki/sa.key",
+          "--service-cluster-ip-range=10.96.0.0/16",
+          "--use-service-account-credentials=true"
+        ],
+        "use_service_account_credentials": "true",
+        "service_account_private_key_file": "/etc/kubernetes/pki/sa.key"
+      },
+      "Remediation": "컨트롤러에 대해 서비스 계정 자격증명을 사용하도록 설정하고(private key 파일 경로 지정) 매니페스트에서 --use-service-account-credentials=true 및 --service-account-private-key-file=/path/to/key.pem 와 같이 설정하세요. 설정 변경은 control-plane 노드의 static manifest (/etc/kubernetes/manifests/...)에서 수행하고 변경 후 kubelet이 매니페스트를 감지해 재시작합니다. 파일 존재/권한 등은 control-plane 노드에서 직접 확인하여 private key 파일이 안전한 위치에 있고 권한이 제한되어 있는지 확인하세요.",
+      "Description": "Controller는 클러스터의 상태를 감시하고 현재 상태와 원하는 상태가 일치하도록 관리하는 작업을 한다. 각 컨트롤러에 대해 개별 서비스 계정 자격증명을 사용해 인가된 계정만이 클러스터를 제어할 수 있도록 설정해야한다.",
+      "RiskLevel": 8,
+      "RecommendedSetting": "Controller 인증 제어 설정이 적용된 경우\n- --use-service-account-credentials=true\n- --service-account-private-key-file 설정",
+      "VerificationCommand": "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-controller-manager\")) | .spec.containers[].args' | grep -E 'use-service-account-credentials|service-account-private-key-file'",
+      "Category": "ControlPlane"
+    },
+    {
       "CheckID": "CHK-M-ETCD-001",
       "Result": "FAIL",
       "ObjectType": "Pod",
@@ -469,38 +518,25 @@
       "Category": "ControlPlane"
     },
     {
-      "CheckID": "CHK-M-CTRL-002",
-      "Result": "WARN",
+      "CheckID": "CHK-M-ETCD-002",
+      "Result": "PASS",
       "ObjectType": "Pod",
-      "ObjectName": "kube-controller-manager-kind-control-plane",
+      "ObjectName": "etcd-kind-control-plane",
       "Namespace": "kube-system",
-      "Reason": "--feature-gates 플래그가 없음 (권장: TLS/회전 관련 기능 활성화 여부 확인)",
+      "Reason": "etcd 서버에 TLS 설정이 적절히 구성됨",
       "Evidence": {
-        "args": [
-          "kube-controller-manager",
-          "--allocate-node-cidrs=true",
-          "--authentication-kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--authorization-kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--bind-address=127.0.0.1",
-          "--client-ca-file=/etc/kubernetes/pki/ca.crt",
-          "--cluster-cidr=10.244.0.0/16",
-          "--cluster-name=kind",
-          "--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt",
-          "--cluster-signing-key-file=/etc/kubernetes/pki/ca.key",
-          "--controllers=*,bootstrapsigner,tokencleaner",
-          "--enable-hostpath-provisioner=true",
-          "--kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--leader-elect=true",
-          "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
-          "--root-ca-file=/etc/kubernetes/pki/ca.crt",
-          "--service-account-private-key-file=/etc/kubernetes/pki/sa.key",
-          "--service-cluster-ip-range=10.96.0.0/16",
-          "--use-service-account-credentials=true"
-        ],
-        "root_ca_file": "/etc/kubernetes/pki/ca.crt",
-        "feature_gates": null
+        "flag_values": {
+          "--client-cert-auth": "true",
+          "--cert-file": "/etc/kubernetes/pki/etcd/server.crt",
+          "--key-file": "/etc/kubernetes/pki/etcd/server.key",
+          "--peer-cert-file": "/etc/kubernetes/pki/etcd/peer.crt",
+          "--peer-key-file": "/etc/kubernetes/pki/etcd/peer.key",
+          "--trusted-ca-file": "/etc/kubernetes/pki/etcd/ca.crt",
+          "--auto-tls": null,
+          "--peer-auto-tls": null
+        }
       },
-      "Remediation": "kube-controller-manager 매니페스트에서 --root-ca-file=/path/to/ca.crt 를 설정하여 신뢰할 CA를 지정하세요. 또한 TLS 관련/자동갱신 기능(예: RotateKubeletClientCertificate 등)이 필요하면 --feature-gates에 적절한 값을 추가하세요. 파일 존재/권한 확인은 control-plane 노드에서 직접 수행하십시오.",
+      "Remediation": "",
       "Description": "",
       "RiskLevel": 0,
       "RecommendedSetting": "",
@@ -508,42 +544,24 @@
       "Category": "ControlPlane"
     },
     {
-      "CheckID": "CHK-M-CTRL-001",
+      "CheckID": "CHK-M-ETCD-002",
       "Result": "PASS",
       "ObjectType": "Pod",
-      "ObjectName": "kube-controller-manager-kind-control-plane",
+      "ObjectName": "kube-apiserver-kind-control-plane",
       "Namespace": "kube-system",
-      "Reason": "Controller 인증 제어 설정(서비스어카운트 자격증명 + private key)이 적절히 구성됨",
+      "Reason": "kube-apiserver의 etcd 연결 TLS 설정이 적절히 구성됨",
       "Evidence": {
-        "args": [
-          "kube-controller-manager",
-          "--allocate-node-cidrs=true",
-          "--authentication-kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--authorization-kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--bind-address=127.0.0.1",
-          "--client-ca-file=/etc/kubernetes/pki/ca.crt",
-          "--cluster-cidr=10.244.0.0/16",
-          "--cluster-name=kind",
-          "--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt",
-          "--cluster-signing-key-file=/etc/kubernetes/pki/ca.key",
-          "--controllers=*,bootstrapsigner,tokencleaner",
-          "--enable-hostpath-provisioner=true",
-          "--kubeconfig=/etc/kubernetes/controller-manager.conf",
-          "--leader-elect=true",
-          "--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt",
-          "--root-ca-file=/etc/kubernetes/pki/ca.crt",
-          "--service-account-private-key-file=/etc/kubernetes/pki/sa.key",
-          "--service-cluster-ip-range=10.96.0.0/16",
-          "--use-service-account-credentials=true"
-        ],
-        "use_service_account_credentials": "true",
-        "service_account_private_key_file": "/etc/kubernetes/pki/sa.key"
+        "flag_values": {
+          "--etcd-certfile": "/etc/kubernetes/pki/apiserver-etcd-client.crt",
+          "--etcd-keyfile": "/etc/kubernetes/pki/apiserver-etcd-client.key",
+          "--etcd-cafile": "/etc/kubernetes/pki/etcd/ca.crt"
+        }
       },
-      "Remediation": "컨트롤러에 대해 서비스 계정 자격증명을 사용하도록 설정하고(private key 파일 경로 지정) 매니페스트에서 --use-service-account-credentials=true 및 --service-account-private-key-file=/path/to/key.pem 와 같이 설정하세요. 설정 변경은 control-plane 노드의 static manifest (/etc/kubernetes/manifests/...)에서 수행하고 변경 후 kubelet이 매니페스트를 감지해 재시작합니다. 파일 존재/권한 등은 control-plane 노드에서 직접 확인하여 private key 파일이 안전한 위치에 있고 권한이 제한되어 있는지 확인하세요.",
-      "Description": "Controller는 클러스터의 상태를 감시하고 현재 상태와 원하는 상태가 일치하도록 관리하는 작업을 한다. 각 컨트롤러에 대해 개별 서비스 계정 자격증명을 사용해 인가된 계정만이 클러스터를 제어할 수 있도록 설정해야한다.",
-      "RiskLevel": 8,
-      "RecommendedSetting": "Controller 인증 제어 설정이 적용된 경우\n- --use-service-account-credentials=true\n- --service-account-private-key-file 설정",
-      "VerificationCommand": "kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains(\"kube-controller-manager\")) | .spec.containers[].args' | grep -E 'use-service-account-credentials|service-account-private-key-file'",
+      "Remediation": "",
+      "Description": "",
+      "RiskLevel": 0,
+      "RecommendedSetting": "",
+      "VerificationCommand": "",
       "Category": "ControlPlane"
     },
     {
@@ -660,7 +678,7 @@
       "ObjectType": "Node",
       "ObjectName": "kind-control-plane",
       "Namespace": "N/A",
-      "Reason": "Kubelet authorization mode 확인됨: unknown (기본값 Webhook 적용으로 간주)",
+      "Reason": "Kubelet config 확인됨. authorization.mode 미기재로 Kubernetes 기본값(Webhook) 적용",
       "Evidence": {
         "node": "kind-control-plane",
         "kubelet_version": "v1.30.0",
@@ -676,7 +694,7 @@
         },
         "error": null
       },
-      "Remediation": "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 AlwaysAllow 사용을 피하세요.\n예:\nauthorization:\n  mode: Webhook\n",
+      "Remediation": "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 AlwaysAllow 사용을 피하세요.\n예: authorization:\n  mode: Webhook\n",
       "Description": "Kubelet 인가 모드가 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다. AlwaysAllow 모드는 보안상 위험하므로 사용하지 않아야 합니다.",
       "RiskLevel": 8,
       "RecommendedSetting": "Kubelet 인가가 설정된 경우\n- --authorization-mode=Webhook (권장) 또는 --authorization-mode=AlwaysAllow 제외",
@@ -689,7 +707,7 @@
       "ObjectType": "Node",
       "ObjectName": "kind-worker",
       "Namespace": "N/A",
-      "Reason": "Kubelet authorization mode 확인됨: unknown (기본값 Webhook 적용으로 간주)",
+      "Reason": "Kubelet config 확인됨. authorization.mode 미기재로 Kubernetes 기본값(Webhook) 적용",
       "Evidence": {
         "node": "kind-worker",
         "kubelet_version": "v1.30.0",
@@ -705,7 +723,7 @@
         },
         "error": null
       },
-      "Remediation": "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 AlwaysAllow 사용을 피하세요.\n예:\nauthorization:\n  mode: Webhook\n",
+      "Remediation": "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 AlwaysAllow 사용을 피하세요.\n예: authorization:\n  mode: Webhook\n",
       "Description": "Kubelet 인가 모드가 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다. AlwaysAllow 모드는 보안상 위험하므로 사용하지 않아야 합니다.",
       "RiskLevel": 8,
       "RecommendedSetting": "Kubelet 인가가 설정된 경우\n- --authorization-mode=Webhook (권장) 또는 --authorization-mode=AlwaysAllow 제외",
@@ -718,7 +736,7 @@
       "ObjectType": "Node",
       "ObjectName": "kind-worker2",
       "Namespace": "N/A",
-      "Reason": "Kubelet authorization mode 확인됨: unknown (기본값 Webhook 적용으로 간주)",
+      "Reason": "Kubelet config 확인됨. authorization.mode 미기재로 Kubernetes 기본값(Webhook) 적용",
       "Evidence": {
         "node": "kind-worker2",
         "kubelet_version": "v1.30.0",
@@ -734,11 +752,95 @@
         },
         "error": null
       },
-      "Remediation": "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 AlwaysAllow 사용을 피하세요.\n예:\nauthorization:\n  mode: Webhook\n",
+      "Remediation": "각 노드의 kubelet authorization mode를 Webhook으로 설정하고 AlwaysAllow 사용을 피하세요.\n예: authorization:\n  mode: Webhook\n",
       "Description": "Kubelet 인가 모드가 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다. AlwaysAllow 모드는 보안상 위험하므로 사용하지 않아야 합니다.",
       "RiskLevel": 8,
       "RecommendedSetting": "Kubelet 인가가 설정된 경우\n- --authorization-mode=Webhook (권장) 또는 --authorization-mode=AlwaysAllow 제외",
       "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep authorization-mode",
+      "Category": "Kubelet"
+    },
+    {
+      "CheckID": "CHK-W-KUBELET-001",
+      "Result": "FAIL",
+      "ObjectType": "Node",
+      "ObjectName": "kind-control-plane",
+      "Namespace": "N/A",
+      "Reason": "Kubelet 인증 설정(clientCAFile)이 없음",
+      "Evidence": {
+        "node": "kind-control-plane",
+        "kubelet_version": "v1.30.0",
+        "pod": "node-scanner-r8tvk",
+        "kubelet_summary": {
+          "present": "true",
+          "has_clientCAFile": "false",
+          "authorization_mode": "unknown",
+          "has_tlsCertFile": "false",
+          "has_tlsPrivateKeyFile": "false",
+          "serverTLSBootstrap": "false"
+        },
+        "error": null
+      },
+      "Remediation": "각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요. ERROR인 경우: 1) kubectl apply -f k8s/node-scanner-daemonset.yaml 배포 2) 노드에 해당 경로 존재 여부 확인\n예: authentication:\n  x509:\n    clientCAFile: /etc/kubernetes/pki/ca.crt\n",
+      "Description": "Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.",
+      "RiskLevel": 8,
+      "RecommendedSetting": "Kubelet 인증이 설정된 경우\n- --client-ca-file 설정 (클라이언트 인증서 검증)",
+      "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file",
+      "Category": "Kubelet"
+    },
+    {
+      "CheckID": "CHK-W-KUBELET-001",
+      "Result": "FAIL",
+      "ObjectType": "Node",
+      "ObjectName": "kind-worker",
+      "Namespace": "N/A",
+      "Reason": "Kubelet 인증 설정(clientCAFile)이 없음",
+      "Evidence": {
+        "node": "kind-worker",
+        "kubelet_version": "v1.30.0",
+        "pod": "node-scanner-wvvb9",
+        "kubelet_summary": {
+          "present": "true",
+          "has_clientCAFile": "false",
+          "authorization_mode": "unknown",
+          "has_tlsCertFile": "false",
+          "has_tlsPrivateKeyFile": "false",
+          "serverTLSBootstrap": "false"
+        },
+        "error": null
+      },
+      "Remediation": "각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요. ERROR인 경우: 1) kubectl apply -f k8s/node-scanner-daemonset.yaml 배포 2) 노드에 해당 경로 존재 여부 확인\n예: authentication:\n  x509:\n    clientCAFile: /etc/kubernetes/pki/ca.crt\n",
+      "Description": "Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.",
+      "RiskLevel": 8,
+      "RecommendedSetting": "Kubelet 인증이 설정된 경우\n- --client-ca-file 설정 (클라이언트 인증서 검증)",
+      "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file",
+      "Category": "Kubelet"
+    },
+    {
+      "CheckID": "CHK-W-KUBELET-001",
+      "Result": "FAIL",
+      "ObjectType": "Node",
+      "ObjectName": "kind-worker2",
+      "Namespace": "N/A",
+      "Reason": "Kubelet 인증 설정(clientCAFile)이 없음",
+      "Evidence": {
+        "node": "kind-worker2",
+        "kubelet_version": "v1.30.0",
+        "pod": "node-scanner-hzjtk",
+        "kubelet_summary": {
+          "present": "true",
+          "has_clientCAFile": "false",
+          "authorization_mode": "unknown",
+          "has_tlsCertFile": "false",
+          "has_tlsPrivateKeyFile": "false",
+          "serverTLSBootstrap": "false"
+        },
+        "error": null
+      },
+      "Remediation": "각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요. ERROR인 경우: 1) kubectl apply -f k8s/node-scanner-daemonset.yaml 배포 2) 노드에 해당 경로 존재 여부 확인\n예: authentication:\n  x509:\n    clientCAFile: /etc/kubernetes/pki/ca.crt\n",
+      "Description": "Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.",
+      "RiskLevel": 8,
+      "RecommendedSetting": "Kubelet 인증이 설정된 경우\n- --client-ca-file 설정 (클라이언트 인증서 검증)",
+      "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file",
       "Category": "Kubelet"
     },
     {
@@ -874,88 +976,112 @@
       "Category": "File"
     },
     {
-      "CheckID": "CHK-W-KUBELET-001",
+      "CheckID": "CHK-W-KUBELET-003",
       "Result": "FAIL",
-      "ObjectType": "Node",
-      "ObjectName": "kind-control-plane",
+      "ObjectType": "Cluster",
+      "ObjectName": "kind-control-plane, kind-worker, kind-worker2",
       "Namespace": "N/A",
-      "Reason": "Kubelet 인증 설정(clientCAFile)이 없음",
+      "Reason": "노드별 kubelet TLS 설정 점검 결과",
       "Evidence": {
-        "node": "kind-control-plane",
-        "kubelet_version": "v1.30.0",
-        "pod": "node-scanner-r8tvk",
-        "kubelet_summary": {
-          "present": "true",
-          "has_clientCAFile": "false",
-          "authorization_mode": "unknown",
-          "has_tlsCertFile": "false",
-          "has_tlsPrivateKeyFile": "false",
-          "serverTLSBootstrap": "false"
-        },
-        "error": null
+        "per_node": {
+          "kind-control-plane": {
+            "result": "FAIL",
+            "reason": "Kubelet TLS 설정이 없거나 부적절함",
+            "kubelet_version": "v1.30.0",
+            "pod": "node-scanner-r8tvk",
+            "kubelet_summary": {
+              "present": "true",
+              "has_clientCAFile": "false",
+              "authorization_mode": "unknown",
+              "has_tlsCertFile": "false",
+              "has_tlsPrivateKeyFile": "false",
+              "serverTLSBootstrap": "false"
+            },
+            "error": null
+          },
+          "kind-worker": {
+            "result": "FAIL",
+            "reason": "Kubelet TLS 설정이 없거나 부적절함",
+            "kubelet_version": "v1.30.0",
+            "pod": "node-scanner-wvvb9",
+            "kubelet_summary": {
+              "present": "true",
+              "has_clientCAFile": "false",
+              "authorization_mode": "unknown",
+              "has_tlsCertFile": "false",
+              "has_tlsPrivateKeyFile": "false",
+              "serverTLSBootstrap": "false"
+            },
+            "error": null
+          },
+          "kind-worker2": {
+            "result": "FAIL",
+            "reason": "Kubelet TLS 설정이 없거나 부적절함",
+            "kubelet_version": "v1.30.0",
+            "pod": "node-scanner-hzjtk",
+            "kubelet_summary": {
+              "present": "true",
+              "has_clientCAFile": "false",
+              "authorization_mode": "unknown",
+              "has_tlsCertFile": "false",
+              "has_tlsPrivateKeyFile": "false",
+              "serverTLSBootstrap": "false"
+            },
+            "error": null
+          }
+        }
       },
-      "Remediation": "각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요.\n예:\nauthentication:\n  x509:\n    clientCAFile: /etc/kubernetes/pki/ca.crt\n",
-      "Description": "Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.",
+      "Remediation": "각 노드의 kubelet TLS 설정을 활성화하세요.\n예: serverTLSBootstrap: true 또는 --tls-cert-file / --tls-private-key-file\n",
+      "Description": "Kubelet과 API Server 간 통신은 TLS로 암호화되어야 합니다. TLS가 설정되지 않으면 네트워크 스니핑 공격에 취약할 수 있습니다.",
       "RiskLevel": 8,
-      "RecommendedSetting": "Kubelet 인증이 설정된 경우\n- --client-ca-file 설정 (클라이언트 인증서 검증)",
-      "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file",
+      "RecommendedSetting": "Kubelet TLS가 설정된 경우\n- --tls-cert-file 설정\n- --tls-private-key-file 설정",
+      "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep -E 'tls-cert-file|tls-private-key-file'",
       "Category": "Kubelet"
     },
     {
-      "CheckID": "CHK-W-KUBELET-001",
+      "CheckID": "CHK-M-PSA-002",
       "Result": "FAIL",
-      "ObjectType": "Node",
-      "ObjectName": "kind-worker",
-      "Namespace": "N/A",
-      "Reason": "Kubelet 인증 설정(clientCAFile)이 없음",
+      "ObjectType": "Pod",
+      "ObjectName": "kube-bench-kwdd7",
+      "Namespace": "default",
+      "Reason": "호스트 네임스페이스 공유 사용: hostPID=true",
       "Evidence": {
-        "node": "kind-worker",
-        "kubelet_version": "v1.30.0",
-        "pod": "node-scanner-wvvb9",
-        "kubelet_summary": {
-          "present": "true",
-          "has_clientCAFile": "false",
-          "authorization_mode": "unknown",
-          "has_tlsCertFile": "false",
-          "has_tlsPrivateKeyFile": "false",
-          "serverTLSBootstrap": "false"
-        },
-        "error": null
+        "pod": "kube-bench-kwdd7",
+        "namespace": "default",
+        "nodeName": "kind-worker2",
+        "pod_uid": "88860b01-3f2e-4d9d-b943-1a3d6f353518",
+        "hostPID": true
       },
-      "Remediation": "각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요.\n예:\nauthentication:\n  x509:\n    clientCAFile: /etc/kubernetes/pki/ca.crt\n",
-      "Description": "Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.",
-      "RiskLevel": 8,
-      "RecommendedSetting": "Kubelet 인증이 설정된 경우\n- --client-ca-file 설정 (클라이언트 인증서 검증)",
-      "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file",
-      "Category": "Kubelet"
+      "Remediation": "파드 kube-bench-kwdd7의 spec에서 다음 설정을 false로 변경하세요:\n- hostNetwork: false\n- hostPID: false\n- hostIPC: false\n\n또는 PSA(Pod Security Admission)를 사용하여 네임스페이스 레벨에서 제한하세요.",
+      "Severity": "High",
+      "Description": "파드의 컨테이너는 일반적으로 별도의 리눅스 네임스페이스에서 실행되므로 프로세스가 다른 컨테이너 또는 노드의 기본 네임스페이스에서 실행 중인 프로세스와 분리된다. 파드의 스펙에서 hostNetwork 옵션을 true로 설정하여 가상 네트워크 어댑터 대신 노드의 실제 네트워크 어댑터를 사용할 수 있으며 그 결과 해당 파드는 노드의 인터페이스를 사용하게 된다. 또한, hostNetwork 옵션과 유사한 파드 스펙 속성으로 hostPID와 hostIPC가 있다. 이를 true로 설정하면 파드의 컨테이너는 노드의 PID와 IPC 네임스페이스를 사용해 컨테이너에서 실행 중인 프로세스가 노드의 다른 프로세스를 보거나 IPC로 이들과 통신할 수 있다. 따라서, PSA(Pod Security Admission) 설정을 통해 호스트 IPC, PID, 네트워크 네임스페이스 사용을 방지하여 불필요한 권한을 제거해야 한다.",
+      "RiskLevel": 9,
+      "RecommendedSetting": "네임스페이스 공유 금지 설정이 적용된 경우\n- hostNetwork=false\n- hostPID=false\n- hostIPC=false",
+      "VerificationCommand": "kubectl get pods --all-namespaces -o json | jq '.items[] | select(.spec.hostNetwork == true or .spec.hostPID == true or .spec.hostIPC == true)'",
+      "Category": "Pod"
     },
     {
-      "CheckID": "CHK-W-KUBELET-001",
+      "CheckID": "CHK-M-PSA-002",
       "Result": "FAIL",
-      "ObjectType": "Node",
-      "ObjectName": "kind-worker2",
-      "Namespace": "N/A",
-      "Reason": "Kubelet 인증 설정(clientCAFile)이 없음",
+      "ObjectType": "Pod",
+      "ObjectName": "system-monitor-deployment-5d49dd76b9-8mrtg",
+      "Namespace": "default",
+      "Reason": "호스트 네임스페이스 공유 사용: hostPID=true, hostIPC=true",
       "Evidence": {
-        "node": "kind-worker2",
-        "kubelet_version": "v1.30.0",
-        "pod": "node-scanner-hzjtk",
-        "kubelet_summary": {
-          "present": "true",
-          "has_clientCAFile": "false",
-          "authorization_mode": "unknown",
-          "has_tlsCertFile": "false",
-          "has_tlsPrivateKeyFile": "false",
-          "serverTLSBootstrap": "false"
-        },
-        "error": null
+        "pod": "system-monitor-deployment-5d49dd76b9-8mrtg",
+        "namespace": "default",
+        "nodeName": "kind-worker2",
+        "pod_uid": "74da75b2-d4fa-41f4-8cc9-6c5c63ee0d36",
+        "hostPID": true,
+        "hostIPC": true
       },
-      "Remediation": "각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요.\n예:\nauthentication:\n  x509:\n    clientCAFile: /etc/kubernetes/pki/ca.crt\n",
-      "Description": "Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.",
-      "RiskLevel": 8,
-      "RecommendedSetting": "Kubelet 인증이 설정된 경우\n- --client-ca-file 설정 (클라이언트 인증서 검증)",
-      "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file",
-      "Category": "Kubelet"
+      "Remediation": "파드 system-monitor-deployment-5d49dd76b9-8mrtg의 spec에서 다음 설정을 false로 변경하세요:\n- hostNetwork: false\n- hostPID: false\n- hostIPC: false\n\n또는 PSA(Pod Security Admission)를 사용하여 네임스페이스 레벨에서 제한하세요.",
+      "Severity": "High",
+      "Description": "파드의 컨테이너는 일반적으로 별도의 리눅스 네임스페이스에서 실행되므로 프로세스가 다른 컨테이너 또는 노드의 기본 네임스페이스에서 실행 중인 프로세스와 분리된다. 파드의 스펙에서 hostNetwork 옵션을 true로 설정하여 가상 네트워크 어댑터 대신 노드의 실제 네트워크 어댑터를 사용할 수 있으며 그 결과 해당 파드는 노드의 인터페이스를 사용하게 된다. 또한, hostNetwork 옵션과 유사한 파드 스펙 속성으로 hostPID와 hostIPC가 있다. 이를 true로 설정하면 파드의 컨테이너는 노드의 PID와 IPC 네임스페이스를 사용해 컨테이너에서 실행 중인 프로세스가 노드의 다른 프로세스를 보거나 IPC로 이들과 통신할 수 있다. 따라서, PSA(Pod Security Admission) 설정을 통해 호스트 IPC, PID, 네트워크 네임스페이스 사용을 방지하여 불필요한 권한을 제거해야 한다.",
+      "RiskLevel": 9,
+      "RecommendedSetting": "네임스페이스 공유 금지 설정이 적용된 경우\n- hostNetwork=false\n- hostPID=false\n- hostIPC=false",
+      "VerificationCommand": "kubectl get pods --all-namespaces -o json | jq '.items[] | select(.spec.hostNetwork == true or .spec.hostPID == true or .spec.hostIPC == true)'",
+      "Category": "Pod"
     },
     {
       "CheckID": "CHK-M-PSA-002",
@@ -998,83 +1124,6 @@
       "Category": "Pod"
     },
     {
-      "CheckID": "CHK-M-FILE-001",
-      "Result": "PASS",
-      "ObjectType": "Cluster",
-      "ObjectName": "ALL",
-      "Namespace": "N/A",
-      "Reason": "검사 생략 (kubeadm 환경이 아님)",
-      "Evidence": {
-        "note": "이 검사는 kubeadm으로 설치된 클러스터에만 적용됩니다."
-      },
-      "Remediation": "",
-      "Description": "Kubernetes 환경설정 파일의 접근 권한이 과도하게 설정된 경우, 비인가자가 다양한 방법으로 Kubernetes 설정을 변경해 침해 사고를 일으킬 가능성이 있다. 따라서 비인가자가 파일을 수정할 수 없도록 파일의 접근 권한을 제한해 파일의 무결성을 유지해야 한다.",
-      "RiskLevel": 8,
-      "RecommendedSetting": "환경설정 파일의 소유자 및 소유 그룹이 root이고, 접근 권한이 644 이하로 설정된 경우",
-      "VerificationCommand": "ls -al /etc/kubernetes/manifests/kube-apiserver.yaml\nls -al /etc/kubernetes/manifests/kube-controller-manager.yaml\nls -al /etc/kubernetes/manifests/kube-scheduler.yaml\nls -al /etc/kubernetes/manifests/etcd.yaml\nls -al /etc/kubernetes/admin.conf\nls -al /etc/kubernetes/scheduler.conf\nls -al /etc/kubernetes/controller-manager.conf",
-      "Category": "ControlPlane"
-    },
-    {
-      "CheckID": "CHK-W-KUBELET-003",
-      "Result": "FAIL",
-      "ObjectType": "Cluster",
-      "ObjectName": "kind-control-plane, kind-worker, kind-worker2",
-      "Namespace": "N/A",
-      "Reason": "노드별 kubelet TLS 설정 점검 결과",
-      "Evidence": {
-        "per_node": {
-          "kind-control-plane": {
-            "result": "FAIL",
-            "kubelet_version": "v1.30.0",
-            "pod": "node-scanner-r8tvk",
-            "kubelet_summary": {
-              "present": "true",
-              "has_clientCAFile": "false",
-              "authorization_mode": "unknown",
-              "has_tlsCertFile": "false",
-              "has_tlsPrivateKeyFile": "false",
-              "serverTLSBootstrap": "false"
-            },
-            "error": null
-          },
-          "kind-worker": {
-            "result": "FAIL",
-            "kubelet_version": "v1.30.0",
-            "pod": "node-scanner-wvvb9",
-            "kubelet_summary": {
-              "present": "true",
-              "has_clientCAFile": "false",
-              "authorization_mode": "unknown",
-              "has_tlsCertFile": "false",
-              "has_tlsPrivateKeyFile": "false",
-              "serverTLSBootstrap": "false"
-            },
-            "error": null
-          },
-          "kind-worker2": {
-            "result": "FAIL",
-            "kubelet_version": "v1.30.0",
-            "pod": "node-scanner-hzjtk",
-            "kubelet_summary": {
-              "present": "true",
-              "has_clientCAFile": "false",
-              "authorization_mode": "unknown",
-              "has_tlsCertFile": "false",
-              "has_tlsPrivateKeyFile": "false",
-              "serverTLSBootstrap": "false"
-            },
-            "error": null
-          }
-        }
-      },
-      "Remediation": "각 노드의 kubelet TLS 설정을 활성화하세요.\n예:\n- serverTLSBootstrap: true\n또는 kubelet 플래그로 --tls-cert-file / --tls-private-key-file 설정\n",
-      "Description": "Kubelet과 API Server 간 통신은 TLS로 암호화되어야 합니다. TLS가 설정되지 않으면 네트워크 스니핑 공격에 취약할 수 있습니다.",
-      "RiskLevel": 8,
-      "RecommendedSetting": "Kubelet TLS가 설정된 경우\n- --tls-cert-file 설정\n- --tls-private-key-file 설정",
-      "VerificationCommand": "kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'\n# 또는 노드에서 직접: ps aux | grep kubelet | grep -E 'tls-cert-file|tls-private-key-file'",
-      "Category": "Kubelet"
-    },
-    {
       "CheckID": "CHK-W-KUBELET-004",
       "Result": "PASS",
       "ObjectType": "Node",
@@ -1154,15 +1203,32 @@
       "RecommendedSetting": "커널 파라미터가 적절히 설정된 경우\n- net.ipv4.ip_forward=1\n- net.bridge.bridge-nf-call-iptables=1\n- kernel.panic_on_oops=1",
       "VerificationCommand": "sysctl net.ipv4.ip_forward\nsysctl net.bridge.bridge-nf-call-iptables\nsysctl kernel.panic_on_oops",
       "Category": "Kubelet"
+    },
+    {
+      "CheckID": "CHK-M-FILE-001",
+      "Result": "PASS",
+      "ObjectType": "Cluster",
+      "ObjectName": "ALL",
+      "Namespace": "N/A",
+      "Reason": "검사 생략 (kubeadm 환경이 아님)",
+      "Evidence": {
+        "note": "이 검사는 kubeadm으로 설치된 클러스터에만 적용됩니다."
+      },
+      "Remediation": "",
+      "Description": "Kubernetes 환경설정 파일의 접근 권한이 과도하게 설정된 경우, 비인가자가 다양한 방법으로 Kubernetes 설정을 변경해 침해 사고를 일으킬 가능성이 있다. 따라서 비인가자가 파일을 수정할 수 없도록 파일의 접근 권한을 제한해 파일의 무결성을 유지해야 한다.",
+      "RiskLevel": 8,
+      "RecommendedSetting": "환경설정 파일의 소유자 및 소유 그룹이 root이고, 접근 권한이 644 이하로 설정된 경우",
+      "VerificationCommand": "ls -al /etc/kubernetes/manifests/kube-apiserver.yaml\nls -al /etc/kubernetes/manifests/kube-controller-manager.yaml\nls -al /etc/kubernetes/manifests/kube-scheduler.yaml\nls -al /etc/kubernetes/manifests/etcd.yaml\nls -al /etc/kubernetes/admin.conf\nls -al /etc/kubernetes/scheduler.conf\nls -al /etc/kubernetes/controller-manager.conf",
+      "Category": "ControlPlane"
     }
   ],
   "Summary": {
-    "score": 55.0,
+    "score": 55,
     "max_score": 100,
     "percentage": 55.0,
-    "passed": 10,
-    "failed": 7,
-    "warn": 2,
+    "passed": 11,
+    "failed": 8,
+    "warn": 0,
     "error": 0,
     "total": 19
   }

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Security Scanner Results</title>
+    <style>
+        :root{
+            --bg:#e0f2fe;
+            --text:#0f172a;
+            --muted:#64748b;
+            --border:#e5e7eb;
+            --head:#f8fafc;
+            --row:#ffffff;
+            --rowAlt:#fbfdff;
+            --hover:#f1f5f9;
+        }
+        *{box-sizing:border-box}
+        body{margin:0;padding:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}
+        .card{max-width:1200px;margin:20px auto;background:white;border-radius:14px;box-shadow:0 10px 30px rgba(2,6,23,.10);overflow:hidden;border:1px solid rgba(148,163,184,.35)}
+        .content{background:white;padding:28px}
+        .title{font-size:1.4rem;font-weight:750;margin:0 0 22px 0;color:#0f172a;letter-spacing:-.2px}
+        .meta{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;gap:24px}
+        .meta-left{flex:1}
+        .meta-line{margin-bottom:10px}
+        .meta-label{font-weight:700;color:#334155}
+        .meta-value{color:var(--muted);margin-left:8px}
+        .score-box{display:flex;align-items:center;gap:18px}
+        .grade{color:white;padding:10px 16px;border-radius:12px;font-weight:800;font-size:1rem;box-shadow:0 8px 18px rgba(0,0,0,.12)}
+        .score-big{font-size:2.25rem;font-weight:900;color:#0f172a;line-height:1}
+        .score-sub{font-size:.875rem;color:var(--muted);margin-top:4px}
+        .table-wrap{margin-top:18px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+        table{width:100%;border-collapse:separate;border-spacing:0;background:white}
+        thead th{background:var(--head);padding:12px 14px;text-align:left;font-weight:800;color:#334155;font-size:.85rem;border-bottom:1px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+        tbody tr:nth-child(odd){background:var(--row)}
+        tbody tr:nth-child(even){background:var(--rowAlt)}
+        tbody tr:hover{background:var(--hover)}
+        .col-category{color:var(--muted);font-weight:700;white-space:nowrap}
+        .col-item{color:#0f172a}
+        .col-target{color:var(--muted)}
+        .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.75rem;font-weight:900;letter-spacing:.2px}
+        .badge-pass{background:#dcfce7;color:#166534}
+        .badge-fail{background:#fee2e2;color:#991b1b}
+        .badge-warn{background:#fef3c7;color:#92400e}
+        .badge-error{background:#f1f5f9;color:#334155}
+        .score-cell{min-width:120px}
+        .score-pill{display:inline-flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:12px;border:1px solid rgba(148,163,184,.45);background:linear-gradient(180deg,#ffffff,#f8fafc);box-shadow:0 1px 0 rgba(2,6,23,.04)}
+        .score-pill-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+        .score-deduct{font-weight:900;color:#0f172a}
+        .score-note{font-size:.72rem;color:var(--muted);font-weight:700}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="content">
+            <h1 class="title">보안 점검 리포트</h1>
+            
+            <div class="meta">
+                <div class="meta-left">
+                    <div class="meta-line"><span class="meta-label">점검 대상</span><span class="meta-value">kind-kind</span></div>
+                    <div class="meta-line"><span class="meta-label">점검 일시</span><span class="meta-value">2026-03-12 16:30:13</span></div>
+                    <div class="meta-line"><span class="meta-label">총 항목수</span><span class="meta-value">19</span></div>
+                    <div class="meta-line"><span class="meta-label">FAIL 항목 수</span><span class="meta-value" style="color:#ef4444;font-weight:900">8</span></div>
+                    <div class="meta-line"><span class="meta-label">WARN 항목 수</span><span class="meta-value" style="color:#f59e0b;font-weight:900">0</span></div>
+                    <div class="meta-line"><span class="meta-label">획득 점수</span><span class="meta-value" style="color:#0f172a;font-weight:900">55/100점</span></div>
+                </div>
+                <div class="score-box">
+                    <div class="grade" style="background:#ef4444;">심각</div>
+                    <div>
+                        <div class="score-big">55점</div>
+                        <div class="score-sub">스캔 점수</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>범주</th>
+                            <th>항목</th>
+                            <th>대상</th>
+                            <th>결과</th>
+                            <th style="text-align:right;">점수</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr>
+                            <td class="col-category">API Server</td>
+                            <td class="col-item">비인증 접근 비활성화</td>
+                            <td class="col-target">kube-system/kube-apiserver-kind-control-plane</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">0/7</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">API Server</td>
+                            <td class="col-item">취약한 인증 비활성화</td>
+                            <td class="col-target">kube-system/kube-apiserver-kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">7/7</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">API Server</td>
+                            <td class="col-item">서비스 외부 접근 비활성화</td>
+                            <td class="col-target">kube-system/kube-controller-manager-kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="2" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">7/7</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">API Server</td>
+                            <td class="col-item">서비스 외부 접근 비활성화</td>
+                            <td class="col-target">kube-system/kube-scheduler-kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">API Server</td>
+                            <td class="col-item">인가 모드</td>
+                            <td class="col-target">kube-system/kube-apiserver-kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">7/7</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">API Server</td>
+                            <td class="col-item">SSL/TLS 활성화</td>
+                            <td class="col-target">kube-system/kube-apiserver-kind-control-plane</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">0/7</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">API Server</td>
+                            <td class="col-item">로그 관리</td>
+                            <td class="col-target">kube-system/kube-apiserver-kind-control-plane</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">0/7</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Controller Manager</td>
+                            <td class="col-item">인증 제어</td>
+                            <td class="col-target">kube-system/kube-controller-manager-kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">7/7</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Controller Manager</td>
+                            <td class="col-item">SSL/TLS 활성화</td>
+                            <td class="col-target">kube-system/kube-controller-manager-kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">7/7</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">etcd</td>
+                            <td class="col-item">암호화 활성화</td>
+                            <td class="col-target">kube-system/kube-apiserver-kind-control-plane</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">0/8</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">etcd</td>
+                            <td class="col-item">SSL/TLS 활성화</td>
+                            <td class="col-target">kube-system/etcd-kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="2" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">6/6</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">etcd</td>
+                            <td class="col-item">SSL/TLS 활성화</td>
+                            <td class="col-target">kube-system/kube-apiserver-kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">File</td>
+                            <td class="col-item">(마스터 노드) 설정 파일 권한</td>
+                            <td class="col-target">ALL</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="1" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">6/6</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Pod Security</td>
+                            <td class="col-item">컨테이너 권한 제어</td>
+                            <td class="col-target">kube-system/node-scanner</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            <td class="score-cell" rowspan="3" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">0/6</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Pod Security</td>
+                            <td class="col-item">컨테이너 권한 제어</td>
+                            <td class="col-target">kube-system/node-scanner</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Pod Security</td>
+                            <td class="col-item">컨테이너 권한 제어</td>
+                            <td class="col-target">kube-system/node-scanner</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Pod Security</td>
+                            <td class="col-item">네임스페이스 공유 비활성화</td>
+                            <td class="col-target">default/kube-bench-kwdd7</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            <td class="score-cell" rowspan="3" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">0/6</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Pod Security</td>
+                            <td class="col-item">네임스페이스 공유 비활성화</td>
+                            <td class="col-target">default/default</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Pod Security</td>
+                            <td class="col-item">네임스페이스 공유 비활성화</td>
+                            <td class="col-target">local-path-storage/local-path-storage</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">File</td>
+                            <td class="col-item">(워커 노드) 설정 파일 권한</td>
+                            <td class="col-target">kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="3" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">2/2</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">File</td>
+                            <td class="col-item">(워커 노드) 설정 파일 권한</td>
+                            <td class="col-target">kind-worker</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">File</td>
+                            <td class="col-item">(워커 노드) 설정 파일 권한</td>
+                            <td class="col-target">kind-worker2</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">File</td>
+                            <td class="col-item">워커 노드 인증서 파일 권한</td>
+                            <td class="col-target">kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="3" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">2/2</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">File</td>
+                            <td class="col-item">워커 노드 인증서 파일 권한</td>
+                            <td class="col-target">kind-worker</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">File</td>
+                            <td class="col-item">워커 노드 인증서 파일 권한</td>
+                            <td class="col-target">kind-worker2</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">인증 제어</td>
+                            <td class="col-target">kind-control-plane</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            <td class="score-cell" rowspan="3" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">0/2</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">인증 제어</td>
+                            <td class="col-target">kind-worker</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">인증 제어</td>
+                            <td class="col-target">kind-worker2</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">인가 제어</td>
+                            <td class="col-target">kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="3" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">2/2</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">인가 제어</td>
+                            <td class="col-target">kind-worker</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">인가 제어</td>
+                            <td class="col-target">kind-worker2</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">SSL/TLS 활성화</td>
+                            <td class="col-target">kind-control-plane</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            <td class="score-cell" rowspan="3" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">0/2</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">SSL/TLS 활성화</td>
+                            <td class="col-target">kind-worker</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">SSL/TLS 활성화</td>
+                            <td class="col-target">kind-worker2</td>
+                            <td><span class="badge badge-fail">FAIL</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">커널 파라미터 구성</td>
+                            <td class="col-target">kind-control-plane</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            <td class="score-cell" rowspan="3" style="text-align:right;vertical-align:middle;"><span class="score-pill" title="동일 항목(CheckID) 내 여러 대상이 있어도, 점수는 체크별 최악 결과 기준으로 1회만 반영됩니다.">  <span class="score-pill-top">    <span class="score-deduct">2/2</span>  </span>  <span class="score-note">체크 기준(최악 결과)</span></span></td>
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">커널 파라미터 구성</td>
+                            <td class="col-target">kind-worker</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                        <tr>
+                            <td class="col-category">Kubelet</td>
+                            <td class="col-item">커널 파라미터 구성</td>
+                            <td class="col-target">kind-worker2</td>
+                            <td><span class="badge badge-pass">PASS</span></td>
+                            
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:30px;">
+                <h2 style="color:#991b1b;font-size:1.25rem;margin-bottom:20px;">⚠️ FAIL 항목 상세 정보 (16건)</h2>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-API-001: 비인증 접근 비활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">10/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> API Server 비인증 접근 차단이 허용될 경우, 익명 요청이 활성화되며 비인가자가 서버에 접근하여 Kubernetes 시스템 환경에 영향을 줄 수 있다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">--anonymous-auth 플래그가 없음 (기본값 true로 익명 접근 허용 가능)</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">API server 비인증 접근을 차단한 경우
+- --anonymous-auth=false
+- --service-account-lookup=true</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains("kube-apiserver")) | .spec.containers[].args'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">명시적으로 --anonymous-auth=false 설정 및 --service-account-lookup=true 추가</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-API-005: SSL/TLS 활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">9/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> SSL/TLS 통신 적용을 통해 네트워크 스니핑과 같은 공격으로 주요 정보가 노출되지 않도록 안전한 통신을 해야 하며, API server에 접근하는 대상에 대해 검증할 수 있도록 설정해야 한다. 또한 SSL/TLS 통신 적용 시에는 주기적으로 인증서를 변경하고 안전한 버전의 암호화 방식을 사용하는 방법을 통해 위험을 최소화할 수 있는 정책 설정이 필요하다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">다음 TLS 관련 플래그가 누락되었거나 값이 비어있음: --kubelet-certificate-authority, --tls-cipher-suites</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">API server SSL/TLS가 적용된 경우
+- --secure-port 설정
+- --kubelet-certificate-authority
+- --kubelet-client-certificate
+- --kubelet-client-key
+- --tls-cert-file
+- --tls-private-key-file
+- --client-ca-file
+- --tls-cipher-suites</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains("kube-apiserver")) | .spec.containers[].args' | grep -E 'secure-port|tls-cert|tls-private-key|client-ca'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kube-apiserver 매니페스트에 TLS 관련 플래그(예: --tls-cert-file, --tls-private-key-file, --client-ca-file, --kubelet-client-certificate/key 등)를 명시적으로 설정하고 --secure-port가 0이 아닌 안전한 포트로 설정되어 있는지 확인하세요. 또한 --tls-cipher-suites 에 강력한 TLS1.2/1.3 기반 암호화 스위트만 허용하세요.</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-API-006: 로그 관리</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">7/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> 로그 정보는 침해 사고 발생시 해킹의 흔적 및 공격기법을 확인할 수 있는 중요 자료로 정기적인 로그 분석을 통하여 시스템 침입 흔적을 확인할 수 있다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">감사 로그 필수 플래그 누락: --audit-log-path, --audit-policy-file</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">API server 로그가 활성화된 경우
+- --audit-log-path
+- --audit-policy-file
+- --audit-log-maxage
+- --audit-log-maxbackup
+- --audit-log-maxsize</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods -n kube-system -o json | jq '.items[] | select(.metadata.name | contains("kube-apiserver")) | .spec.containers[].args' | grep -E 'audit-log|audit-policy'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kube-apiserver 매니페스트에 --audit-log-path, --audit-policy-file 을 설정하세요. 또한 장기 보관과 디스크 관리를 위해 --audit-log-maxage/--audit-log-maxbackup/--audit-log-maxsize 등 로테이션 옵션을 설정하세요.</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-PSA-001: 컨테이너 권한 제어</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">9/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> PodSecurityAdmission(이하 PSA)는 클러스터 및 네임스페이스 수준의 리소스로, 파드에 대해 서로 다른 격리 수준을 정의한다. PodSecurityStandard(이하 PSS)를 적용하기 위해 내장된 PSA Controller를 통해 수행된다. PSS 수준에 맞지 않은 Pod를 생성할 경우 설정된 PSS 수준에 따라 내장된 PSA Controller가 유효성을 검사한다. 따라서, 파드 내 컨테이너가 불필요한 권한을 가지지 않도록 PSA를 통해 PSS를 적용하여 운용해야 한다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">container.securityContext.privileged == true</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">PodSecurityAdmission 정책을 통해 컨테이너 권한을 제어한 경우
+- allowPrivilegeEscalation=false
+- runAsUser 설정
+- runAsNonRoot=true
+- capabilities.drop=ALL
+- seccompProfile 적용</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods --all-namespaces -o json | jq '.items[].spec.containers[].securityContext.privileged'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">privileged:false 설정 또는 보다 세분화된 권한으로 대체</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-PSA-001: 컨테이너 권한 제어</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">9/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> PodSecurityAdmission(이하 PSA)는 클러스터 및 네임스페이스 수준의 리소스로, 파드에 대해 서로 다른 격리 수준을 정의한다. PodSecurityStandard(이하 PSS)를 적용하기 위해 내장된 PSA Controller를 통해 수행된다. PSS 수준에 맞지 않은 Pod를 생성할 경우 설정된 PSS 수준에 따라 내장된 PSA Controller가 유효성을 검사한다. 따라서, 파드 내 컨테이너가 불필요한 권한을 가지지 않도록 PSA를 통해 PSS를 적용하여 운용해야 한다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">container.securityContext.privileged == true</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">PodSecurityAdmission 정책을 통해 컨테이너 권한을 제어한 경우
+- allowPrivilegeEscalation=false
+- runAsUser 설정
+- runAsNonRoot=true
+- capabilities.drop=ALL
+- seccompProfile 적용</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods --all-namespaces -o json | jq '.items[].spec.containers[].securityContext.privileged'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">privileged:false 설정 또는 보다 세분화된 권한으로 대체</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-PSA-001: 컨테이너 권한 제어</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">9/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> PodSecurityAdmission(이하 PSA)는 클러스터 및 네임스페이스 수준의 리소스로, 파드에 대해 서로 다른 격리 수준을 정의한다. PodSecurityStandard(이하 PSS)를 적용하기 위해 내장된 PSA Controller를 통해 수행된다. PSS 수준에 맞지 않은 Pod를 생성할 경우 설정된 PSS 수준에 따라 내장된 PSA Controller가 유효성을 검사한다. 따라서, 파드 내 컨테이너가 불필요한 권한을 가지지 않도록 PSA를 통해 PSS를 적용하여 운용해야 한다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">container.securityContext.privileged == true</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">PodSecurityAdmission 정책을 통해 컨테이너 권한을 제어한 경우
+- allowPrivilegeEscalation=false
+- runAsUser 설정
+- runAsNonRoot=true
+- capabilities.drop=ALL
+- seccompProfile 적용</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods --all-namespaces -o json | jq '.items[].spec.containers[].securityContext.privileged'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">privileged:false 설정 또는 보다 세분화된 권한으로 대체</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-ETCD-001: 암호화 활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">10/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> etcd는 Kubernetes와 같은 분산시스템에서 중요한 데이터를 저장할 때 사용할 수 있는 키 값 분산 저장소 역할을 하고 있다. 따라서 etcd에 저장되는 데이터는 매우 민감하므로 공개되지 않도록 저장 시 암호화되어야 한다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">--encryption-provider-config 플래그가 설정되지 않음 (etcd 데이터 암호화 미적용)</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">etcd 암호화 방식이 aescbc 이상으로 설정된 경우
+- --encryption-provider-config 설정</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">ps -ef | grep kube-apiserver | grep encryption-provider-config
+# encryption-provider-config 내 설정된 경로의 암호화 설정 파일 분석을 통해 안전한 암호화 방식 사용 여부 확인</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kube-apiserver 매니페스트에 --encryption-provider-config 플래그를 추가하고 암호화 설정 파일 경로를 지정하세요. 암호화 방식은 aescbc 이상을 사용해야 합니다. 예: --encryption-provider-config=/etc/kubernetes/encryption-config.yaml</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-PSA-002: 네임스페이스 공유 비활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">9/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> 파드의 컨테이너는 일반적으로 별도의 리눅스 네임스페이스에서 실행되므로 프로세스가 다른 컨테이너 또는 노드의 기본 네임스페이스에서 실행 중인 프로세스와 분리된다. 파드의 스펙에서 hostNetwork 옵션을 true로 설정하여 가상 네트워크 어댑터 대신 노드의 실제 네트워크 어댑터를 사용할 수 있으며 그 결과 해당 파드는 노드의 인터페이스를 사용하게 된다. 또한, hostNetwork 옵션과 유사한 파드 스펙 속성으로 hostPID와 hostIPC가 있다. 이를 true로 설정하면 파드의 컨테이너는 노드의 PID와 IPC 네임스페이스를 사용해 컨테이너에서 실행 중인 프로세스가 노드의 다른 프로세스를 보거나 IPC로 이들과 통신할 수 있다. 따라서, PSA(Pod Security Admission) 설정을 통해 호스트 IPC, PID, 네트워크 네임스페이스 사용을 방지하여 불필요한 권한을 제거해야 한다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">호스트 네임스페이스 공유 사용: hostPID=true</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">네임스페이스 공유 금지 설정이 적용된 경우
+- hostNetwork=false
+- hostPID=false
+- hostIPC=false</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods --all-namespaces -o json | jq '.items[] | select(.spec.hostNetwork == true or .spec.hostPID == true or .spec.hostIPC == true)'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">파드 kube-bench-kwdd7의 spec에서 다음 설정을 false로 변경하세요:
+- hostNetwork: false
+- hostPID: false
+- hostIPC: false
+
+또는 PSA(Pod Security Admission)를 사용하여 네임스페이스 레벨에서 제한하세요.</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-PSA-002: 네임스페이스 공유 비활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">9/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> 파드의 컨테이너는 일반적으로 별도의 리눅스 네임스페이스에서 실행되므로 프로세스가 다른 컨테이너 또는 노드의 기본 네임스페이스에서 실행 중인 프로세스와 분리된다. 파드의 스펙에서 hostNetwork 옵션을 true로 설정하여 가상 네트워크 어댑터 대신 노드의 실제 네트워크 어댑터를 사용할 수 있으며 그 결과 해당 파드는 노드의 인터페이스를 사용하게 된다. 또한, hostNetwork 옵션과 유사한 파드 스펙 속성으로 hostPID와 hostIPC가 있다. 이를 true로 설정하면 파드의 컨테이너는 노드의 PID와 IPC 네임스페이스를 사용해 컨테이너에서 실행 중인 프로세스가 노드의 다른 프로세스를 보거나 IPC로 이들과 통신할 수 있다. 따라서, PSA(Pod Security Admission) 설정을 통해 호스트 IPC, PID, 네트워크 네임스페이스 사용을 방지하여 불필요한 권한을 제거해야 한다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">PSA(Pod Security Admission) 레이블이 설정되지 않음 (호스트 네임스페이스 공유 제한 없음)</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">네임스페이스 공유 금지 설정이 적용된 경우
+- hostNetwork=false
+- hostPID=false
+- hostIPC=false</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods --all-namespaces -o json | jq '.items[] | select(.spec.hostNetwork == true or .spec.hostPID == true or .spec.hostIPC == true)'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">네임스페이스 default에 PSA 레이블을 추가하여 호스트 네임스페이스 공유를 제한하세요:
+kubectl label namespace default pod-security.kubernetes.io/enforce=restricted --overwrite
+kubectl label namespace default pod-security.kubernetes.io/audit=restricted --overwrite
+kubectl label namespace default pod-security.kubernetes.io/warn=restricted --overwrite</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-M-PSA-002: 네임스페이스 공유 비활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">9/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> 파드의 컨테이너는 일반적으로 별도의 리눅스 네임스페이스에서 실행되므로 프로세스가 다른 컨테이너 또는 노드의 기본 네임스페이스에서 실행 중인 프로세스와 분리된다. 파드의 스펙에서 hostNetwork 옵션을 true로 설정하여 가상 네트워크 어댑터 대신 노드의 실제 네트워크 어댑터를 사용할 수 있으며 그 결과 해당 파드는 노드의 인터페이스를 사용하게 된다. 또한, hostNetwork 옵션과 유사한 파드 스펙 속성으로 hostPID와 hostIPC가 있다. 이를 true로 설정하면 파드의 컨테이너는 노드의 PID와 IPC 네임스페이스를 사용해 컨테이너에서 실행 중인 프로세스가 노드의 다른 프로세스를 보거나 IPC로 이들과 통신할 수 있다. 따라서, PSA(Pod Security Admission) 설정을 통해 호스트 IPC, PID, 네트워크 네임스페이스 사용을 방지하여 불필요한 권한을 제거해야 한다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">PSA(Pod Security Admission) 레이블이 설정되지 않음 (호스트 네임스페이스 공유 제한 없음)</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">네임스페이스 공유 금지 설정이 적용된 경우
+- hostNetwork=false
+- hostPID=false
+- hostIPC=false</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get pods --all-namespaces -o json | jq '.items[] | select(.spec.hostNetwork == true or .spec.hostPID == true or .spec.hostIPC == true)'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">네임스페이스 local-path-storage에 PSA 레이블을 추가하여 호스트 네임스페이스 공유를 제한하세요:
+kubectl label namespace local-path-storage pod-security.kubernetes.io/enforce=restricted --overwrite
+kubectl label namespace local-path-storage pod-security.kubernetes.io/audit=restricted --overwrite
+kubectl label namespace local-path-storage pod-security.kubernetes.io/warn=restricted --overwrite</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-W-KUBELET-001: 인증 제어</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">8/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">Kubelet 인증 설정(clientCAFile)이 없음</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">Kubelet 인증이 설정된 경우
+- --client-ca-file 설정 (클라이언트 인증서 검증)</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'
+# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요. ERROR인 경우: 1) kubectl apply -f k8s/node-scanner-daemonset.yaml 배포 2) 노드에 해당 경로 존재 여부 확인
+예: authentication:
+  x509:
+    clientCAFile: /etc/kubernetes/pki/ca.crt
+</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-W-KUBELET-001: 인증 제어</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">8/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">Kubelet 인증 설정(clientCAFile)이 없음</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">Kubelet 인증이 설정된 경우
+- --client-ca-file 설정 (클라이언트 인증서 검증)</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'
+# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요. ERROR인 경우: 1) kubectl apply -f k8s/node-scanner-daemonset.yaml 배포 2) 노드에 해당 경로 존재 여부 확인
+예: authentication:
+  x509:
+    clientCAFile: /etc/kubernetes/pki/ca.crt
+</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-W-KUBELET-001: 인증 제어</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">8/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> Kubelet은 워커 노드에서 실행되는 주요 컴포넌트로, API Server와 통신하며 파드를 관리합니다. Kubelet 인증이 제대로 설정되지 않으면 비인가된 요청이 허용될 수 있습니다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">Kubelet 인증 설정(clientCAFile)이 없음</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">Kubelet 인증이 설정된 경우
+- --client-ca-file 설정 (클라이언트 인증서 검증)</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'
+# 또는 노드에서 직접: ps aux | grep kubelet | grep client-ca-file</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">각 노드의 /var/lib/kubelet/config.yaml에 clientCAFile 설정을 확인/추가하세요. ERROR인 경우: 1) kubectl apply -f k8s/node-scanner-daemonset.yaml 배포 2) 노드에 해당 경로 존재 여부 확인
+예: authentication:
+  x509:
+    clientCAFile: /etc/kubernetes/pki/ca.crt
+</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-W-KUBELET-003: SSL/TLS 활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">8/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> Kubelet과 API Server 간 통신은 TLS로 암호화되어야 합니다. TLS가 설정되지 않으면 네트워크 스니핑 공격에 취약할 수 있습니다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">Kubelet TLS 설정이 없거나 부적절함</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">Kubelet TLS가 설정된 경우
+- --tls-cert-file 설정
+- --tls-private-key-file 설정</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'
+# 또는 노드에서 직접: ps aux | grep kubelet | grep -E 'tls-cert-file|tls-private-key-file'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">각 노드의 kubelet TLS 설정을 활성화하세요.
+예: serverTLSBootstrap: true
+또는 kubelet 설정에 tlsCertFile / tlsPrivateKeyFile 지정
+</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-W-KUBELET-003: SSL/TLS 활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">8/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> Kubelet과 API Server 간 통신은 TLS로 암호화되어야 합니다. TLS가 설정되지 않으면 네트워크 스니핑 공격에 취약할 수 있습니다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">Kubelet TLS 설정이 없거나 부적절함</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">Kubelet TLS가 설정된 경우
+- --tls-cert-file 설정
+- --tls-private-key-file 설정</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'
+# 또는 노드에서 직접: ps aux | grep kubelet | grep -E 'tls-cert-file|tls-private-key-file'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">각 노드의 kubelet TLS 설정을 활성화하세요.
+예: serverTLSBootstrap: true
+또는 kubelet 설정에 tlsCertFile / tlsPrivateKeyFile 지정
+</pre></div>
+                </div>
+
+                <div style="margin-bottom:24px;padding:20px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;">
+                    <h3 style="color:#991b1b;font-size:1.1rem;margin-bottom:12px;">CHK-W-KUBELET-003: SSL/TLS 활성화</h3>
+                    <div style="margin-bottom:8px;"><strong>위험도:</strong> <span style="color:#dc2626;">8/10</span></div>
+                    <div style="margin-bottom:8px;"><strong>설명:</strong> Kubelet과 API Server 간 통신은 TLS로 암호화되어야 합니다. TLS가 설정되지 않으면 네트워크 스니핑 공격에 취약할 수 있습니다.</div>
+                    <div style="margin-bottom:8px;"><strong>원인:</strong> <span style="color:#dc2626;">Kubelet TLS 설정이 없거나 부적절함</span></div>
+                    <div style="margin-bottom:8px;"><strong>권장 설정:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">Kubelet TLS가 설정된 경우
+- --tls-cert-file 설정
+- --tls-private-key-file 설정</pre></div>
+                    <div style="margin-bottom:8px;"><strong>확인 명령어:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">kubectl get nodes -o json | jq '.items[].status.nodeInfo.kubeletVersion'
+# 또는 노드에서 직접: ps aux | grep kubelet | grep -E 'tls-cert-file|tls-private-key-file'</pre></div>
+                    <div style="margin-top:12px;"><strong>해결 방법:</strong><pre style="background:#f3f4f6;padding:12px;border-radius:4px;margin-top:8px;white-space:pre-wrap;font-size:0.875rem;">각 노드의 kubelet TLS 설정을 활성화하세요.
+예: serverTLSBootstrap: true
+또는 kubelet 설정에 tlsCertFile / tlsPrivateKeyFile 지정
+</pre></div>
+                </div>
+
+            </div>
+
+        </div>
+        <div style="background:#f9fafb;padding:20px;text-align:center;color:#6b7280;font-size:0.875rem;">
+            <p style="margin:0;">Generated by Kubernetes Security Scanner</p>
+        </div>
+    </div>
+</body>
+</html>
